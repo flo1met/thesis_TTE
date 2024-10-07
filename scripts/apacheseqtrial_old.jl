@@ -5,7 +5,7 @@ using FloatingTableView
 using Arrow
 using FilePathsBase
 
-cd("C:/Users/Florian/Documents/Utrecht University/05_thesis/BIOSTAT-07 - Confidence Intervals in Emulated Target Trials/Julia")
+cd("C:/Users/Florian/Documents/GitHub\thesis_TTE/data")
 df = CSV.read("trial_example.csv", DataFrame)
 
 

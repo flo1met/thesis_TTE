@@ -8,16 +8,27 @@ using Arrow
 using FilePathsBase
 using GLM
 using StatsModels
+using Distributions
 
 cd("C:/Users/Florian/Documents/GitHub/thesis_TTE/data")
 df = CSV.read("trial_example.csv", DataFrame)
 
-out = seqtrial(df)
+df_wght = IPW(df)
+
+
+out = seqtrial(df_wght)
 out_censor = art_censor(out)
 
 df_fin = dict_to_df(out_censor)
 
-out_IPW = IPW(df_fin, @formula(censor ~ treatment + fup))
+formula_obj = @formula(censor ~ treatment + fup)
+test_glm = glm(formula_obj, df_fin, Binomial(), LogitLink())
+
+pred = predict(test_glm, df_fin)
+# get range of pred
+println("Min: ", minimum(pred))
+println("Max: ", maximum(pred))
+
 
 browse(out[1])
 browse(out_censor[1])
@@ -36,8 +47,72 @@ browse(out_del)
 
 
 
+#####
+
+## R model: 
+    #glm(formula = outcome ~ assigned_treatment + trial_period + I(trial_period^2) + 
+    #followup_time + I(followup_time^2) + catvarA + catvarB + 
+    #nvarA + nvarB + nvarC, family = binomial(link = "logit"), 
+    #data = data, weights = w)
 
 
+df_seq = dict_to_df(out)
+
+## Julia model:
+model = glm(@formula(outcome ~ treatment + period + (period^2) + fup + (fup^2) + catvarA + catvarB + catvarC + nvarA + nvarB + nvarC), df_seq, Binomial(), LogitLink())
+
+
+
+####
+
+
+# full ITT test
+using CategoricalArrays
+df = CSV.read("trial_example.csv", DataFrame)
+df[!, :catvarA] = CategoricalVector(df.catvarA)
+df[!, :catvarB] = CategoricalVector(df.catvarB)
+df[!, :catvarC] = CategoricalVector(df.catvarC)
+df_wght = IPW(df)
+out = seqtrial(df_wght)
+df_seq = dict_to_df(out)
+
+typeof(df_seq.catvarA)
+df_seq[!, :catvarA] = CategoricalVector(df_seq.catvarA)
+df_seq[!, :catvarB] = CategoricalVector(df_seq.catvarB)
+df_seq[!, :catvarC] = CategoricalVector(df_seq.catvarC)
+
+# groupby id, trialnr
+#grouped_df = groupby(df_seq, [:id, :trialnr])
+# check if treatment == 1 on first observation, if yes assigned_treatment = 1, if no assigned_treatment = 0
+#for group in grouped_df
+#    if group.treatment[1] == 1
+#        group[!, :assigned_treatment] .= 1
+#    else
+#        group[!, :assigned_treatment] .= 0
+#    end
+#end
+
+model = glm(@formula(outcome ~ assigned_treatment + trialnr + (trialnr^2) + fup + (fup^2) + catvarA + catvarB + catvarC + nvarA + nvarB + nvarC), df_seq, Binomial(), LogitLink(), wts = df_seq.IPW)
+
+df_seq.IPW
+browse(df_seq)
+
+
+typeof(df_seq.catvarA)
+
+groupby(df, :id) do group
+    if group.treatment[1] == 1
+        group[!, :baseline_treatment] .= 1
+    else
+        group[!, :baseline_treatment] .= 0                
+    end
+end   
+
+df_baseline = combine(groupby(df, :id), :treatment => (x -> x[1] == 1 ? 1 : 0) => :baseline_treatment)
+
+# Join the baseline_treatment back to the original DataFrame
+df = leftjoin(df, df_baseline, on=:id)
+# check if this is correct, if yes implement in seqtrial.jl
 
 
 

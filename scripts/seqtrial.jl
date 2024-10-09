@@ -5,6 +5,7 @@
 
 ## todo: make it a ! function
 ## todo: integrate censoring function before making final df
+## todo: assigned treatment variable
 
 function seqtrial(df::DataFrame)
     sort!(df, :period) # bring period in right order for loop
@@ -32,7 +33,12 @@ function seqtrial(df::DataFrame)
 
         sort!(trial_tmp, [:id, :period]) # sort for treatment assignment
 
+        # add indicator for baseline treatment assignment by id group
+        ## TODO ###
+             
+
         trials_dict[i] = trial_tmp
     end
     return trials_dict
 end
+

@@ -12,8 +12,44 @@ using Distributions
 
 cd("C:/Users/Florian/Documents/GitHub/thesis_TTE/data")
 df = CSV.read("trial_example.csv", DataFrame)
+df[!, :catvarA] = CategoricalVector(df.catvarA)
+df[!, :catvarB] = CategoricalVector(df.catvarB)
+df[!, :catvarC] = CategoricalVector(df.catvarC)
 
+out_model = ITT(df)
+
+
+df = convert_to_arrow(df)
+df = IPW(df)
+out = seqtrial(df)
+df_seq = dict_to_df(out)
+
+df_seq[!, :catvarA] = CategoricalVector(df_seq.catvarA)
+df_seq[!, :catvarB] = CategoricalVector(df_seq.catvarB)
+df_seq[!, :catvarC] = CategoricalVector(df_seq.catvarC)
+model = glm(@formula(outcome ~ baseline_treatment + trialnr + (trialnr^2) + fup + (fup^2) + catvarA + catvarB + catvarC + nvarA + nvarB + nvarC), 
+            df_seq, Binomial(), LogitLink(), wts = df_seq.IPW)
+
+model_nowght = glm(@formula(outcome ~ baseline_treatment + trialnr + (trialnr^2) + fup + (fup^2) + catvarA + catvarB + catvarC + nvarA + nvarB + nvarC), 
+df_seq, Binomial(), LogitLink())
+
+weights = CSV.read("weights.csv", DataFrame)[:, 1] |> vec
+data = CSV.read("data.csv", DataFrame)
+
+data[!, :catvarA] = CategoricalVector(data.catvarA)
+data[!, :catvarB] = CategoricalVector(data.catvarB)
+data[!, :catvarC] = CategoricalVector(data.catvarC)
+model = glm(@formula(outcome ~ assigned_treatment + trial_period + (trial_period^2) + followup_time + (followup_time^2) + catvarA + catvarB + catvarC + nvarA + nvarB + nvarC), 
+            data, Binomial(), LogitLink(), wts = data.weight)
+
+model_nowght = glm(@formula(outcome ~ assigned_treatment + trial_period + (trial_period^2) + followup_time + (followup_time^2) + catvarA + catvarB + catvarC + nvarA + nvarB + nvarC), 
+            data, Binomial(), LogitLink())
+
+
+model_2 = glm(@formula(outcome ~ assigned_treatment), data, Binomial(), LogitLink())
 df_wght = IPW(df)
+
+
 
 
 out = seqtrial(df_wght)
@@ -72,6 +108,10 @@ df = CSV.read("trial_example.csv", DataFrame)
 df[!, :catvarA] = CategoricalVector(df.catvarA)
 df[!, :catvarB] = CategoricalVector(df.catvarB)
 df[!, :catvarC] = CategoricalVector(df.catvarC)
+
+
+
+
 df_wght = IPW(df)
 
 out = seqtrial(df)
@@ -84,16 +124,6 @@ df_seq[!, :catvarC] = CategoricalVector(df_seq.catvarC)
 
 #df_f = IPW(df, df_seq)
 
-# groupby id, trialnr
-grouped_df = groupby(df_seq, [:id, :trialnr])
-# check if treatment == 1 on first observation, if yes assigned_treatment = 1, if no assigned_treatment = 0
-for group in grouped_df
-    if group.treatment[1] == 1
-        group[!, :assigned_treatment] .= 1
-    else
-        group[!, :assigned_treatment] .= 0
-    end
-end
 
 browse(df_seq)
 sort!(df_seq, [:id, :trialnr])

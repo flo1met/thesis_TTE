@@ -4,7 +4,7 @@
 # GLM, StatsModels, DataFrames, Distributions
 
 ## todo: make it a ! function
-## generalize formula createn
+## generalize formula creation
 
 function IPW(df::DataFrame)
     # initialise IPW column

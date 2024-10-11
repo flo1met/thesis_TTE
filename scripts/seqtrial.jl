@@ -8,17 +8,9 @@
 ## todo: assigned treatment variable
 
 function seqtrial(df::DataFrame)
-    sort!(df, :period) # bring period in right order for loop
-
-    tempdir = mktempdir() # create temp dir for .arrow
-    arrow_file = joinpath(tempdir, "df.arrow")
-    Arrow.write(arrow_file, df) # write arrow file
-    empty!(df) # delete orig DF
-    
-    df = DataFrame(Arrow.Table(arrow_file)) # reread DF as arrow
-        
     # Emulate Target Trials
     trials_dict = Dict{Int64, DataFrame}() # Create dict to save DFs
+    
     for i in unique(df[!,:period])
         filt_tmp(eligible::Int64, period::Int64) = eligible == 1 && period == i # creates template for filtering
         elig_tmp = filter([:eligible, :period] => filt_tmp, df).id
@@ -33,9 +25,14 @@ function seqtrial(df::DataFrame)
 
         sort!(trial_tmp, [:id, :period]) # sort for treatment assignment
 
-        # add indicator for baseline treatment assignment by id group
-        ## TODO ###
-             
+        # add indicator for baseline treatment assignment by id
+        trial_tmp[!, :baseline_treatment] .= 0
+        grouped_df = groupby(trial_tmp, :id)
+        for group in grouped_df
+            if group.treatment[1] == 1
+                group.baseline_treatment .= 1
+            end
+        end  
 
         trials_dict[i] = trial_tmp
     end

@@ -73,7 +73,8 @@ df[!, :catvarA] = CategoricalVector(df.catvarA)
 df[!, :catvarB] = CategoricalVector(df.catvarB)
 df[!, :catvarC] = CategoricalVector(df.catvarC)
 df_wght = IPW(df)
-out = seqtrial(df_wght)
+
+out = seqtrial(df)
 df_seq = dict_to_df(out)
 
 typeof(df_seq.catvarA)
@@ -81,18 +82,31 @@ df_seq[!, :catvarA] = CategoricalVector(df_seq.catvarA)
 df_seq[!, :catvarB] = CategoricalVector(df_seq.catvarB)
 df_seq[!, :catvarC] = CategoricalVector(df_seq.catvarC)
 
-# groupby id, trialnr
-#grouped_df = groupby(df_seq, [:id, :trialnr])
-# check if treatment == 1 on first observation, if yes assigned_treatment = 1, if no assigned_treatment = 0
-#for group in grouped_df
-#    if group.treatment[1] == 1
-#        group[!, :assigned_treatment] .= 1
-#    else
-#        group[!, :assigned_treatment] .= 0
-#    end
-#end
+#df_f = IPW(df, df_seq)
 
-model = glm(@formula(outcome ~ assigned_treatment + trialnr + (trialnr^2) + fup + (fup^2) + catvarA + catvarB + catvarC + nvarA + nvarB + nvarC), df_seq, Binomial(), LogitLink(), wts = df_seq.IPW)
+# groupby id, trialnr
+grouped_df = groupby(df_seq, [:id, :trialnr])
+# check if treatment == 1 on first observation, if yes assigned_treatment = 1, if no assigned_treatment = 0
+for group in grouped_df
+    if group.treatment[1] == 1
+        group[!, :assigned_treatment] .= 1
+    else
+        group[!, :assigned_treatment] .= 0
+    end
+end
+
+browse(df_seq)
+sort!(df_seq, [:id, :trialnr])
+
+CSV.write("trial_example_seq.csv", df_seq)
+
+df_a1 = filter(row -> row.assigned_treatment == 1, df_seq)
+df_a0 = filter(row -> row.assigned_treatment == 0, df_seq)
+
+model = glm(@formula(outcome ~ assigned_treatment + trialnr + (trialnr^2) + fup + (fup^2) + catvarA + catvarB + catvarC + nvarA + nvarB + nvarC), df_f, Binomial(), LogitLink(), wts = df_seq.IPW)
+model_a1 = glm(@formula(outcome ~ assigned_treatment + trialnr + (trialnr^2) + fup + (fup^2) + catvarA + catvarB + catvarC + nvarA + nvarB + nvarC), df_a1, Binomial(), LogitLink(), wts = df_a1.IPW)
+model_a0 = glm(@formula(outcome ~ assigned_treatment + trialnr + (trialnr^2) + fup + (fup^2) + catvarA + catvarB + catvarC + nvarA + nvarB + nvarC), df_a0, Binomial(), LogitLink(), wts = df_a0.IPW)
+
 
 df_seq.IPW
 browse(df_seq)

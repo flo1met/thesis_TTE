@@ -6,15 +6,18 @@
 ## todo: make it a ! function
 ## generalize formula creation
 
-function IPW(df::DataFrame)
+function IPW(df::DataFrame, covariates::Array{Symbol,1})
     # initialise IPW column
     df[!, :IPW] .= 0.0
 
     df_eligible = filter(row -> row.eligible == 1, df)
 
+    # create formula string
+    formula_string_d = "treatment ~ $(join(covariates, " + ")) + period + (period^2)"
+
     # create model
     model_num = glm(@formula(treatment ~ period + (period^2)), df_eligible, Binomial(), LogitLink())
-    model_denom = glm(@formula(treatment ~ catvarA + catvarB + catvarC + nvarA + nvarB + nvarC + period + (period^2)), df_eligible, Binomial(), LogitLink())
+    model_denom = glm(eval(Meta.parse("@formula $formula_string_d")), df_eligible, Binomial(), LogitLink())
     
     prd_num = predict(model_num, df)
     prd_denom = predict(model_denom, df)

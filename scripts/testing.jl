@@ -9,6 +9,7 @@ using FilePathsBase
 using GLM
 using StatsModels
 using Distributions
+using CategoricalArrays
 
 cd("C:/Users/Florian/Documents/GitHub/thesis_TTE/data")
 df = CSV.read("trial_example.csv", DataFrame)

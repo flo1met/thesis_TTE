@@ -51,3 +51,11 @@ f_str = "outcome ~ treat + $(join(covariates, " + ")) + period + (period^2)"
 eval(Meta.parse("@formula $f_str"))
 
 f = gen_formula(f_str)
+
+
+###########################################################################
+convert_to_arrow(df)
+out = seqtrial(df)
+#export csv
+out_df = dict_to_df(out)
+CSV.write("test.csv", out_df)

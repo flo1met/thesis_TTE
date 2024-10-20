@@ -12,10 +12,14 @@ function seqtrial(df::DataFrame)
     trials_dict = Dict{Int64, DataFrame}() # Create dict to save DFs
     
     for i in unique(df[!,:period])
-        filt_tmp(eligible::Int64, period::Int64) = eligible == 1 && period == i # creates template for filtering
+        filt_tmp(eligible, period) = eligible == 1 && period == i # creates template for filtering
         elig_tmp = filter([:eligible, :period] => filt_tmp, df).id
-        filt_tmp2(id::Int64, period::Int64) = in(id, elig_tmp) && period >= i # filters all ids that are eligible at timepoint i and all following timepoints of them
+        filt_tmp2(id, period) = in(id, elig_tmp) && period >= i # filters all ids that are eligible at timepoint i and all following timepoints of them
         trial_tmp = filter([:id, :period] => filt_tmp2, df)
+
+        if isempty(trial_tmp)
+            continue  # Skip this iteration if no eligible data is found
+        end
 
         trial_tmp[!, :trialnr] .= i # add Trial Nr
 

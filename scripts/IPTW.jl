@@ -1,4 +1,4 @@
-#### IPW: stabilised inverse probability weighting to adjust for confounder bias
+#### IPTW: stabilised inverse probability of treatment weighting to adjust for confounder bias
 
 # necessary packages:
 # GLM, StatsModels, DataFrames, Distributions
@@ -6,9 +6,9 @@
 ## todo: make it a ! function
 ## generalize formula creation
 
-function IPW(df::DataFrame, covariates::Array{Symbol,1})
+function IPTW(df::DataFrame, covariates::Array{Symbol,1})
     # initialise IPW column
-    df[!, :IPW] .= 0.0
+    df[!, :IPTW] .= 1.0
 
     df_eligible = filter(row -> row.eligible == 1, df)
 
@@ -22,8 +22,8 @@ function IPW(df::DataFrame, covariates::Array{Symbol,1})
     prd_num = predict(model_num, df)
     prd_denom = predict(model_denom, df)
 
-    # calculate weights with ifelse
-    df[!, :IPW] .= ifelse.(df.treatment .== 1, (prd_num ./ prd_denom), ((1 .- prd_num) ./ (1 .- prd_denom)))
+    # calculate inverse propensity weights with ifelse
+    df[!, :IPTW] .= ifelse.(df.treatment .== 1, (prd_num ./ prd_denom), ((1 .- prd_num) ./ (1 .- prd_denom)))
 
     # truncate weights at 99th percentile
     #df[!, :IPW] = ifelse.(df.IPW .> quantile(df.IPW, 0.99), quantile(df.IPW, 0.99), df.IPW)

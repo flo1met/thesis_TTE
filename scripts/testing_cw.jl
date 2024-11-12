@@ -17,6 +17,52 @@ cd("C:/Users/fmetwaly/OneDrive - UMC Utrecht/Documenten/GitHub/thesis_TTE/data")
 df = RData.load("data_censored.rda")["data_censored"]
 df
 
+df[!, :x1] = CategoricalVector(df.x1)
+df[!, :x3] = CategoricalVector(df.x3)
+
+
+out = IPCW(df, [:x1, :x2, :x3, :x4, :age])
+
+# export to csv
+CSV.write("IPCW.csv", out[1])
+
+out[2]
+out[3]
+
+test2 = predict(out[2], df)
+test = predict(out[2], df)
+
+sq = seqtrial(df)
+
+df_seq = dict_to_df(sq)
+
+#export to csv
+CSV.write("seqtrial.csv", df_seq)
+#cumprod of IPCW
+
+# outcome model
+model = glm(@formula(outcome ~ baseline_treatment + period + (period^2) + fup + (fup^2) + x1 + x2 + x3 + x4 + age), df_seq, Binomial(), LogitLink(), wts = df_seq.IPCW)
+
+df_seq.IPCW
+
+# output type of every column in df_seq
+for col in names(df_seq)
+    println("Column: $col")
+    println("Type: $(eltype(df_seq[!, col]))")
+end
+
+for col in names(df)
+    println("Column: $col")
+    println("Type: $(eltype(df[!, col]))")
+end
+
+
+
+
+
+
+
+
 # sort df
 
 ## rename columns

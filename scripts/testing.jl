@@ -1,35 +1,36 @@
 #### testing code and performance
 
-using DataFrames
 using CSV
 using Profile
-using FloatingTableView
-using Arrow
+#using FloatingTableView
+
 using FilePathsBase
-using GLM
-using StatsModels
-using Distributions
+
 using CategoricalArrays
+using Pkg
+#Pkg.add(https://github.com/flo1met/TargetTrialEmulation.jl)
+using TargetTrialEmulation
+using DataFrames
+using StatsModels
+using GLM
 
-cd("C:/Users/Florian/Documents/GitHub/thesis_TTE/data")
-df = CSV.read("trial_example.csv", DataFrame)
-df[!, :catvarA] = CategoricalVector(df.catvarA)
-df[!, :catvarB] = CategoricalVector(df.catvarB)
-df[!, :catvarC] = CategoricalVector(df.catvarC)
-
-out_model = ITT(df)
-
+df = CSV.read("thesis_TTE/data/trial_example.csv", DataFrame)
 
 df = convert_to_arrow(df)
-df = IPW(df)
-out = seqtrial(df)
+out = seqtrial(df, [:catvarA, :catvarB, :catvarC, :nvarA, :nvarB, :nvarC])
 df_seq = dict_to_df(out)
 
 df_seq[!, :catvarA] = CategoricalVector(df_seq.catvarA)
 df_seq[!, :catvarB] = CategoricalVector(df_seq.catvarB)
 df_seq[!, :catvarC] = CategoricalVector(df_seq.catvarC)
 model = glm(@formula(outcome ~ baseline_treatment + trialnr + (trialnr^2) + fup + (fup^2) + catvarA + catvarB + catvarC + nvarA + nvarB + nvarC), 
-            df_seq, Binomial(), LogitLink(), wts = df_seq.IPW)
+            df_seq, Binomial(), LogitLink())
+
+model = glm(@formula(outcome ~ baseline_treatment + trialnr + (trialnr^2) + fup + (fup^2)), 
+            df_seq, Binomial(), LogitLink())
+
+# save df_seq as csv
+CSV.write("df_julia_baseline.csv", df_seq)
 
 model_nowght = glm(@formula(outcome ~ baseline_treatment + trialnr + (trialnr^2) + fup + (fup^2) + catvarA + catvarB + catvarC + nvarA + nvarB + nvarC), 
 df_seq, Binomial(), LogitLink())

@@ -1,0 +1,17 @@
+---
+title: "Untitled"
+format: html
+---
+
+```{r}
+R <- read.csv("test.csv") %>%
+  arrange(id, trialnr) %>%
+  filter(id == 2)
+Julai <- read.csv("out_df.csv") %>%
+  arrange(id, trialnr)
+
+
+
+load("data_censored.rda")
+```
+

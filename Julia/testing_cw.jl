@@ -4,24 +4,65 @@ using DataFrames
 using CSV
 using Profile
 #using FloatingTableView
-using Arrow
 using FilePathsBase
 using GLM
 using StatsModels
-using Distributions
 using CategoricalArrays
 using CodecBzip2
 using RData
+using Pkg
+Pkg.develop(path = "C:/Users/fmetwaly/OneDrive - UMC Utrecht/Documenten/GitHub/TargetTrialEmulation.jl")
+using TargetTrialEmulation
 
-cd("C:/Users/fmetwaly/OneDrive - UMC Utrecht/Documenten/GitHub/thesis_TTE/data")
-df = RData.load("data_censored.rda")["data_censored"]
-df
+df = RData.load("thesis_TTE/data/data_censored.rda")["data_censored"]
 
 df[!, :x1] = CategoricalVector(df.x1)
 df[!, :x3] = CategoricalVector(df.x3)
 
+df_out, model, model_num, model_denom = TTE(df, 
+    outcome = :outcome, 
+    treatment = :treatment, 
+    period = :period, 
+    eligible = :eligible, 
+    censored = :censored,
+    covariates = [:x1, :x2, :x3, :x4, :age], 
+    save_w_model = true
+    )
 
-out = IPCW(df, [:x1, :x2, :x3, :x4, :age])
+
+model
+model_num
+model_denom
+
+glm(@formula(outcome ~ baseline_treatment + trialnr + (trialnr^2) + fup + (fup^2) + x1 + x2 + x3 + x4 + age), df_out, Binomial(), LogitLink())
+
+## R 
+### numerator
+# read csv
+wm_num_d_R = CSV.read("thesis_TTE/data/wm_num_d.csv", DataFrame)
+glm(@formula(censored == 0 ~ period + period^2), wm_num_d_R, Binomial(), LogitLink())
+
+### denominator
+wm_denom_d_R = CSV.read("thesis_TTE/data/wm_denom_d.csv", DataFrame)
+glm(@formula(censored == 0 ~ period + period^2), wm_denom_d_R, Binomial(), LogitLink())
+
+
+wdf_out = TTE(df, 
+    outcome = :outcome, 
+    treatment = :treatment, 
+    period = :period, 
+    eligible = :eligible, 
+    censored = :censored,
+    covariates = [:x1, :x2, :x3, :x4, :age], 
+    save_w_model = false
+    )
+
+
+
+
+
+
+
 
 # export to csv
 CSV.write("IPCW.csv", out[1])
@@ -32,16 +73,16 @@ out[3]
 test2 = predict(out[2], df)
 test = predict(out[2], df)
 
-sq = seqtrial(df)
+sq = seqtrial(df, [:x1, :x2, :x3, :x4, :age])
 
 df_seq = dict_to_df(sq)
 
 #export to csv
-CSV.write("seqtrial.csv", df_seq)
+CSV.write("thesis_TTE/data/seqtrial.csv", df_seq)
 #cumprod of IPCW
 
 # outcome model
-model = glm(@formula(outcome ~ baseline_treatment + period + (period^2) + fup + (fup^2) + x1 + x2 + x3 + x4 + age), df_seq, Binomial(), LogitLink(), wts = df_seq.IPCW)
+glm(@formula(outcome ~ baseline_treatment + trialnr + (trialnr^2) + fup + (fup^2)), df_seq, Binomial(), LogitLink())
 
 df_seq.IPCW
 

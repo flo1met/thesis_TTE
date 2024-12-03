@@ -8,7 +8,7 @@ using FilePathsBase
 
 using CategoricalArrays
 using Pkg
-#Pkg.add(https://github.com/flo1met/TargetTrialEmulation.jl)
+Pkg.add(path = "C:/Users/fmetwaly/OneDrive - UMC Utrecht/Documenten/GitHub/TargetTrialEmulation.jl")
 using TargetTrialEmulation
 using DataFrames
 using StatsModels

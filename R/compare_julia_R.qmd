@@ -1,0 +1,239 @@
+---
+title: "compare Julia TrialEmulation"
+format: html
+---
+```{r}
+library(TrialEmulation)
+library(tidyverse)
+```
+
+# Compare Dataframes
+### Trial Emulation
+```{r}
+# Prepare the example data
+data("trial_example")
+# Set columns to factors as necessary
+trial_example$catvarA <- as.factor(trial_example$catvarA)
+trial_example$catvarB <- as.factor(trial_example$catvarB)
+trial_example$catvarC <- as.factor(trial_example$catvarC)
+
+t1 <- Sys.time()
+result_2 <- initiators(
+  data = trial_example,
+  id = "id",
+  period = "period",
+  eligible = "eligible",
+  treatment = "treatment",
+  estimand_type = "ITT",
+  outcome = "outcome",
+  model_var = "assigned_treatment",
+  outcome_cov = c("catvarA", "catvarB", "catvarC", "nvarA", "nvarB", "nvarC"),
+  use_censor_weights = FALSE,
+  save_weight_models = TRUE,
+  data_dir = "D:/Mijn Drive/Utrecht University/05_thesis/BIOSTAT-07 - Confidence Intervals in Emulated Target Trials",
+  pool_cense = "none"
+)
+t2 <- Sys.time()
+t2-t1
+
+
+df_te <- result_2$model$data
+
+glm(formula = outcome ~ assigned_treatment + trial_period + I(trial_period^2) + followup_time + I(followup_time^2), family = binomial(link = "logit"), 
+    data = df_te)
+```
+
+### Julia
+```{r}
+df_julia <- read.csv("df_julia.csv")
+
+df_julia$catvarA <- as.factor(df_julia$catvarA)
+df_julia$catvarB <- as.factor(df_julia$catvarB)
+df_julia$catvarC <- as.factor(df_julia$catvarC)
+
+glm(formula = outcome ~ baseline_treatment + trialnr + I(trialnr^2) + fup + I(fup^2) + catvarA + catvarB + catvarC + nvarA + nvarB + nvarC, family = binomial(link = "logit"), 
+    data = df_julia)
+```
+
+### summerschool
+```{r}
+# Write a function to create sequentially emulated dataset
+seq.em <- function(data, trial.num) {
+  datalist <- list()
+  for(i in (1:trial.num)){
+    # Extract list of eligible IDs for trial i
+    ids.trial <- data$id[which(data$eligible==1 & data$period==(i-1))]
+    if (length(ids.trial) == 0) {
+    next  # Skip this iteration if my_object is empty
+    }
+    # Create person-time data for trial i
+    trial <- data[data$id %in% ids.trial, ]
+    # Create follow-up time and trial number variables
+    trial$trial_num <- i - 1
+    trial$time <- trial$period - (i - 1)
+    # Create concatenated unique ID number
+    trial$id_new <- paste(trial$id, "-", i, sep = "")
+    # Delete person-time rows before the start of trial i
+    # + administratively censor at 24 weeks after baseline
+    trial <- trial[(trial$time >= 0), ]
+    trial <- trial %>%
+      dplyr::group_by(id) %>%
+      dplyr::mutate(baseline_treatment = first(treatment)) %>%
+      dplyr::ungroup()
+    # Add trial i to the list
+    datalist[[i]] <- trial
+  }
+  # Combine all sequentially emulated trials into a single dataset
+  all <- data.table::rbindlist(datalist)
+  return(all)
+}
+```
+
+```{r}
+df_ss <- seq.em(trial_example, 1000)
+
+df_ss$catvarA <- as.factor(df_ss$catvarA)
+df_ss$catvarB <- as.factor(df_ss$catvarB)
+df_ss$catvarC <- as.factor(df_ss$catvarC)
+
+glm(formula = outcome ~ baseline_treatment + trial_num + I(trial_num^2) + time + I(time^2) + catvarA + catvarB + catvarC + nvarA + nvarB + nvarC, family = binomial(link = "logit"), 
+    data = df_ss)
+```
+
+### compare
+```{r}
+#orig df
+orig_f <- trial_example %>%
+  arrange(id) %>% 
+  filter(id == 1)
+
+#julia tte
+df_julia <- df_julia %>%
+  arrange(id, trialnr)
+
+j_f <- df_julia %>% filter(id == 1)
+
+#trialemulation tte
+df_te <- df_te %>%
+  arrange(id, trial_period)
+
+te_f <- df_te %>% filter(id == 1)
+
+#summerschool tte
+df_ss <- df_ss %>%
+  arrange(id, trial_num)
+
+te_f <- df_te %>% filter(id == 1)
+```
+
+
+# Compare Models
+```{r}
+load("thesis_TTE/data/data_censored.rda")
+df_j <- read.csv("../Data/IPCW.csv")
+```
+
+```{r}
+data_censored$x1 <- as.factor(data_censored$x1)
+data_censored$x3 <- as.factor(data_censored$x3)
+```
+
+```{r}
+t1 <- Sys.time()
+out_te <- initiators(
+  data = data_censored,
+  id = "id",
+  period = "period",
+  eligible = "eligible",
+  treatment = "treatment",
+  estimand_type = "ITT",
+  outcome = "outcome",
+  model_var = "assigned_treatment",
+  outcome_cov = c("x1", "x2", "x3", "x4", "age"),
+  use_censor_weights = TRUE,
+  cense = "censored",
+  save_weight_models = TRUE,
+  data_dir = "D:/Mijn Drive/Utrecht University/05_thesis/BIOSTAT-07 - Confidence Intervals in Emulated Target Trials/R TrialEmulation/OutputModels",
+  pool_cense = "both",
+  cense_n_cov = ~ period + I(period^2),
+  cense_d_cov = ~ x1 + x2 + x3 + x4 + age + period + I(period^2),
+  include_followup_time = ~followup_time + I(followup_time^2)
+)
+t2 <- Sys.time()
+t2-t1
+
+
+censormodel <-readRDS("../OutputModels/cense_model_pool_d.rds")$data # export dataset used for the censorweight model
+
+df_te <- out_te$model$data
+#df_j_bl <- read.csv("~/GitHub/thesis_TTE/data/df_julia_baseline.csv")
+df_j_bl <- read.csv("~/GitHub/thesis_TTE/data/seqtrial.csv")
+
+#save df_te 
+write.csv(df_te, "df_te_for_tests.csv")
+
+summary(glm(outcome ~ assigned_treatment + trial_period + I(trial_period^2) + followup_time + I(followup_time^2), 
+            data = df_te,
+            family = binomial(link = "logit")) )
+
+
+summary(glm(outcome ~ baseline_treatment + trialnr + I(trialnr^2) + fup + I(fup^2), 
+            data = df_j_bl,
+            family = binomial(link = "logit")) )
+
+df_te <- df_te %>% arrange(id, trial_period)
+df_j_bl <- df_j_bl %>% arrange(id, trialnr)
+```
+
+
+```{r}
+summary(readRDS("C:/Users/fmetwaly/OneDrive - UMC Utrecht/Documenten/GitHub/thesis_TTE/R/OutputModels/cense_model_pool_n.rds"))
+summary(glm(censored == 0 ~ period + I(period^2), family = binomial(link = "logit"), data = df_j))
+```
+
+
+
+
+
+# Full Model like TTE
+```{r}
+t1 <- Sys.time()
+out_te <- initiators(
+  data = data_censored,
+  id = "id",
+  period = "period",
+  eligible = "eligible",
+  treatment = "treatment",
+  estimand_type = "ITT",
+  outcome = "outcome",
+  model_var = "assigned_treatment",
+  outcome_cov = c("x1", "x2", "x3", "x4", "age"),
+  use_censor_weights = TRUE,
+  cense = "censored",
+  pool_cense = "both",
+  cense_n_cov = ~ period + I(period^2),
+  cense_d_cov = ~ x1 + x2 + x3 + x4 + age + period + I(period^2),
+  include_followup_time = ~followup_time + I(followup_time^2)
+)
+t2 <- Sys.time()
+t2-t1
+
+df_te <- out_te$model$data
+summary(glm(outcome ~ assigned_treatment + trial_period + I(trial_period^2) + followup_time + I(followup_time^2), 
+            data = df_te,
+            family = binomial(link = "logit"), w = weight) )
+```
+
+
+
+
+
+```{r}
+test <- readRDS("thesis_TTE/R/OutputModels/cense_model_pool_n.rds")
+df <- test$data
+
+
+modeld <- readRDS("thesis_TTE/R/OutputModels/cense_model_pool_d.rds")
+
+modeld
+```

@@ -28,8 +28,6 @@ result_2 <- initiators(
   model_var = "assigned_treatment",
   outcome_cov = c("catvarA", "catvarB", "catvarC", "nvarA", "nvarB", "nvarC"),
   use_censor_weights = FALSE,
-  save_weight_models = TRUE,
-  data_dir = "D:/Mijn Drive/Utrecht University/05_thesis/BIOSTAT-07 - Confidence Intervals in Emulated Target Trials",
   pool_cense = "none"
 )
 t2 <- Sys.time()
@@ -363,8 +361,6 @@ out_te <- initiators(
   outcome_cov = c("x1", "x2", "x3", "x4", "age"),
   use_censor_weights = TRUE,
   cense = "censored",
-  save_weight_models = TRUE,
-  data_dir = "D:/Mijn Drive/Utrecht University/05_thesis/BIOSTAT-07 - Confidence Intervals in Emulated Target Trials",
   pool_cense = "both",
   cense_n_cov = ~ period + I(period^2),
   cense_d_cov = ~ x1 + x2 + x3 + x4 + age + period + I(period^2),
@@ -377,12 +373,12 @@ t2-t1
 df_te <- out_te$model$data
 
 
-censormodel <-readRDS("cense_model_pool_d.rds")$data
+#censormodel <-readRDS("cense_model_pool_d.rds")$data
 
-summary(readRDS("cense_model_pool_n.rds"))
+#summary(readRDS("cense_model_pool_n.rds"))
 
-df_j <- read.csv("IPCW.csv")
-summary(glm(censored == 0 ~ period + I(period^2), family = binomial(link = "logit"), data = df_j))
+#df_j <- read.csv("IPCW.csv")
+#summary(glm(censored == 0 ~ period + I(period^2), family = binomial(link = "logit"), data = df_j))
 
   
   
@@ -444,5 +440,21 @@ t2-t1
 
 ```{r}
 summary(result$model)
+
+
+```
+
+```{r}
+load("C:/Users/fmetwaly/OneDrive - UMC Utrecht/Documenten/GitHub/thesis_TTE/data/data_censored.rda")
+
+write.csv(data_censored, file = "C:/Users/fmetwaly/OneDrive - UMC Utrecht/Documenten/GitHub/thesis_TTE/data/data_censored.csv")
+
+write.csv(out_te$model$data, file = "C:/Users/fmetwaly/OneDrive - UMC Utrecht/Documenten/GitHub/thesis_TTE/data/data_censored_sequential.csv")
+
+```
+
+
+```{r}
+
 ```
 

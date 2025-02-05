@@ -14,10 +14,14 @@ using Pkg
 Pkg.develop(path = "C:/Users/fmetwaly/OneDrive - UMC Utrecht/Documenten/GitHub/TargetTrialEmulation.jl")
 using TargetTrialEmulation
 
-df = RData.load("thesis_TTE/data/data_censored.rda")["data_censored"]
+df = RData.load("data/data_censored.rda")["data_censored"]
 
 df[!, :x1] = CategoricalVector(df.x1)
 df[!, :x3] = CategoricalVector(df.x3)
+
+#df[!, :x1] = categorical(df.x1)
+#df[!, :x3] = categorical(df.x3)
+
 
 df_out, model, model_num, model_denom = TTE(df, 
     outcome = :outcome, 
@@ -29,12 +33,19 @@ df_out, model, model_num, model_denom = TTE(df,
     save_w_model = true
     )
 
+df_out
 
 model
 model_num
 model_denom
 
-glm(@formula(outcome ~ baseline_treatment + trialnr + (trialnr^2) + fup + (fup^2) + x1 + x2 + x3 + x4 + age), df_out, Binomial(), LogitLink())
+glm(@formula(outcome ~ baseline_treatment + trialnr + (trialnr^2) + fup + (fup^2) + x1 + x2 + x3 + x4 + age), test, Binomial(), LogitLink())
+
+## find bug
+test = seqtrial(df, [:x1, :x2, :x3, :x4, :age])
+
+test = []
+push!(test, 1)
 
 ## R 
 ### numerator

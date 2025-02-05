@@ -1,0 +1,128 @@
+---
+title: "getting started"
+format: html
+---
+
+```{r}
+library(TrialEmulation)
+```
+
+# Replication "trial_example"
+
+```{r}
+# Prepare the example data
+data("trial_example")
+# Set columns to factors as necessary
+trial_example$catvarA <- as.factor(trial_example$catvarA)
+trial_example$catvarB <- as.factor(trial_example$catvarB)
+```
+
+```{r}
+t1 <- Sys.time()
+result <- initiators(
+  data = trial_example,
+  id = "id",
+  period = "period",
+  eligible = "eligible",
+  treatment = "treatment",
+  estimand_type = "ITT",
+  outcome = "outcome",
+  model_var = "assigned_treatment",
+  outcome_cov = c("catvarA", "catvarB", "nvarA", "nvarB", "nvarC"),
+  use_censor_weights = FALSE
+)
+Sys.time() - t1
+
+coef(summary(result))
+```
+
+
+# Replication "data_censored"
+```{r}
+load("C:/Users/fmetwaly/OneDrive - UMC Utrecht/Documenten/GitHub/thesis_TTE/data/data_censored.rda")
+```
+
+```{r}
+data_censored$x1 <- as.factor(data_censored$x1)
+data_censored$x3 <- as.factor(data_censored$x3)
+```
+
+```{r}
+t1 <- Sys.time()
+out_te <- initiators(
+  data = data_censored,
+  id = "id",
+  period = "period",
+  eligible = "eligible",
+  treatment = "treatment",
+  estimand_type = "ITT",
+  outcome = "outcome",
+  model_var = "assigned_treatment",
+  outcome_cov = c("x1", "x2", "x3", "x4", "age"),
+  use_censor_weights = TRUE,
+  cense = "censored",
+  pool_cense = "both",
+  cense_n_cov = ~ period + I(period^2),
+  cense_d_cov = ~ x1 + x2 + x3 + x4 + age + period + I(period^2),
+  include_followup_time = ~followup_time + I(followup_time^2)
+)
+Sys.time() - t1
+
+out_te
+summary(out_te$model)
+```
+
+## Find convergence issues
+```{r}
+# export model data
+data_censored_sequential <- out_te$model$data
+
+# rerun glm
+m1 <- glm(formula = outcome ~ assigned_treatment + trial_period + I(trial_period^2) + 
+    followup_time + I(followup_time^2) + x1 + x2 + x3 + x4 + 
+    age, family = binomial(link = "logit"), data = data_censored_sequential, weights = data_censored_sequential$weight)
+
+summary(m1) # replicates TTE GLM
+
+# fix starting values, iterations and tolerance
+m2 <- glm(formula = outcome ~ assigned_treatment + trial_period + I(trial_period^2) + 
+    followup_time + I(followup_time^2) + x1 + x2 + x3 + x4 + 
+    age, 
+    family = binomial(link = "logit"), 
+    start = rep(0, 11),
+    data = data_censored_sequential,
+    weights = data_censored_sequential$weight,
+    control = glm.control(maxit = 100, epsilon = 1e-8))
+
+summary(m2)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# export stuff
+```{r}
+sum(out_te$model$data$trial_period)
+
+library(tidyverse)
+out_sort <- out_te$model$data %>%
+  arrange(id, trial_period)
+
+d_out <- read_csv(file = "C:/Users/fmetwaly/OneDrive - UMC Utrecht/Documenten/GitHub/thesis_TTE/data/data_censored_sequential.csv")
+
+d_out <- d_out %>%
+  arrange(id, trial_period)
+```
+

@@ -1,0 +1,30 @@
+---
+title: "simulate data"
+format: html
+---
+
+```{r}
+source("data_simulation.R")
+```
+
+```{r}
+set.seed(1337)
+library(assertions)
+data <- data_gen_censored(ns = 100,
+                  nv = 5,
+                  conf = 0.5,
+                  treat_prev = 1,
+                  all_treat = FALSE,
+                  all_control = FALSE,
+                  censor = TRUE)
+
+set.seed(1337)
+data2 <- TrialEmulation:::data_gen_censored(ns = 100,
+                  nv = 5,
+                  conf = 0.5,
+                  treat_prev = 1,
+                  all_treat = FALSE,
+                  all_control = FALSE,
+                  censor = TRUE)
+```
+

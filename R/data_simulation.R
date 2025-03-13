@@ -108,6 +108,7 @@ data_gen_censored <- function(ns,
   A <- A[-NSEQ]
   Ap <- Ap[-NSEQ]
   CAp <- CAp[-NSEQ]
+  #seq(1, nvisit * ns - nv, nvisit)
   Y <- Y[-seq(1, nvisit * ns - nv, nvisit)]
   Yp <- Yp[-seq(1, nvisit * ns - nv, nvisit)]
 
@@ -149,6 +150,7 @@ data_gen_censored <- function(ns,
 
     DATA$age_s <- (DATA$age - 35) / 12
     DATA2 <- DATA[DATA$Yp == 0 & eligCum > 0, ]
-    DATA2[, c("ID", "t", "A", "X1", "X2", "X3", "X4", "age", "age_s", "Y", "C", "eligible")]
+    #DATA2[, c("ID", "t", "A", "X1", "X2", "X3", "X4", "age", "age_s", "Y", "C", "eligible")]
+    return(DATA2)
   }
 }

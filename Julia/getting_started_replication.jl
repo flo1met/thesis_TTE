@@ -2,7 +2,7 @@
 
 using CSV
 using Pkg
-Pkg.develop(path = "C:/Users/fmetwaly/OneDrive - UMC Utrecht/Documenten/GitHub/TargetTrialEmulation.jl")
+Pkg.develop(path = "../TargetTrialEmulation.jl")
 using TargetTrialEmulation
 using CategoricalArrays
 using DataFrames
@@ -19,13 +19,17 @@ data[!, :catvarB] = CategoricalVector(data.catvarB)
 # perform sequential TTE
 
 df_out, model = TTE(data, 
+    id_var = :id,
     outcome = :outcome, 
     treatment = :treatment, 
     period = :period, 
     eligible = :eligible, 
     ipcw = false,
-    covariates = [:catvarA, :catvarB, :nvarA, :nvarB, :nvarC]
+    covariates = [:catvarA, :catvarB, :nvarA, :nvarB, :nvarC],
+    estimate_surv = false
 )
+
+# catA 3
 
 model
 
@@ -40,6 +44,7 @@ df[!, :x1] = CategoricalVector(df.x1)
 df[!, :x3] = CategoricalVector(df.x3)
 
 df_out, model, model_num, model_denom = TTE(df, 
+    id_var = :id,
     outcome = :outcome, 
     treatment = :treatment, 
     period = :period, 
@@ -50,14 +55,14 @@ df_out, model, model_num, model_denom = TTE(df,
     save_w_model = true
     )
 
-
-# convergence issues, tolerance, starting values, etc.
 model
 model_num
 model_denom
 
+# convergence issues, tolerance, starting values, etc.
+
 ## replicate TTE GLM
-m1 = glm(@formula(outcome ~ treatment_first + x1_first + x2_first + x3_first + x4_first + age_first + trialnr + (trialnr ^ 2) + fup + (fup ^ 2)), df_out, Bernoulli(), LogitLink(), wts = df_out.IPCW)
+m1 = glm(@formula(outcome ~ treatment_first + x1_first + x2_first + x3_first + x4_first + age_first + fup + (fup ^ 2)), df_out, Bernoulli(), LogitLink(), wts = df_out.IPCW)
 
 ## fix starting values, iterations and tolerance
 m2 = glm(@formula(outcome ~ treatment_first + x1_first + x2_first + x3_first + x4_first + age_first + trialnr + (trialnr ^ 2) + fup + (fup ^ 2)), 
@@ -69,6 +74,9 @@ m2 = glm(@formula(outcome ~ treatment_first + x1_first + x2_first + x3_first + x
         atol = 1e-8,
         rtol = 1e-8
         )
+
+    # multiply trial_period by 10 o solve convergence?
+    # leave out trial period
 
 ```
 R and Julia output differ slightly, even with fixed values for starting values, iterations and tolerance.

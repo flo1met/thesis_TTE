@@ -2,7 +2,7 @@ library(TrialEmulation)
 args <- commandArgs(trailingOnly = TRUE)
 SEED <- as.integer(args[1])
 
-data <- read.csv("out/Sim1/data_gen_sim.csv")
+data <- read.csv(paste0("out/Sim1/data_gen_sim", SEED, ".csv"))
 
 data$x1 <- as.factor(data$x1)
 data$x3 <- as.factor(data$x3)
@@ -25,7 +25,7 @@ out_te <- initiators(
   include_followup_time = ~followup_time + I(followup_time^2)
 )
 
-cumsurv <- predict(out_te, predict_times = 0:10)
+cumsurv <- predict(out_te, predict_times = 0:9, type = "survival")
 
 write.csv(cumsurv$difference, paste0("out/Sim1/cumsurvR", SEED, ".csv"), row.names = FALSE)
 

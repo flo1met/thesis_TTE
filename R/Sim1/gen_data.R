@@ -14,4 +14,4 @@ data <- TrialEmulation:::data_gen_censored(ns = 500,
 
 names(data) <-c("id", "period", "treatment", "x1", "x2", "x3", "x4", "age", "age_s", "outcome", "censored", "eligible")
 
-write.csv(data, "out/Sim1/data_gen_sim.csv", row.names = FALSE)
+write.csv(data, paste0("out/Sim1/data_gen_sim", SEED, ".csv"), row.names = FALSE)

@@ -2,11 +2,9 @@
 
 library(arrow)
 library(TrialEmulation)
+library(furrr)
 
-
-
-
-files <- list.files("Simulation 1/datasets/")
+files <- data.frame(file = list.files("Simulation 1/datasets/"))
 
 est <- function(file) {
   data <- read_feather(paste0("Simulation 1/datasets/", file))
@@ -31,3 +29,9 @@ est <- function(file) {
   
   write_feather(out_surv, sink = paste0("Simulation 1/out/R/R_MRD_", file))
 }
+
+plan(multisession)
+set.seed(1337)
+future_pwalk(files2, est,
+             .options = furrr_options(seed = TRUE), .progress = TRUE)
+plan(sequential)

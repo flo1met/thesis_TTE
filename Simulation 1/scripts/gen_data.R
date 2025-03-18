@@ -1,0 +1,49 @@
+# Simulate Data Simulation 1
+
+library(TrialEmulation)
+library(tidyverse)
+source("Simulation 1/scripts/simulate_MSM_simplified.R")
+library(furrr)
+
+nsim = 1:1000# number of simulations
+nvisit = 5 # number of visits
+nsample = c(200, 1000, 5000) # sample size
+a_y = c(-3.8) # outcome event rate
+a_c = c(0.5) # confounding strength
+a_t = c(0) # treatment prevalence
+
+
+scenarios <- expand.grid(nsim = nsim, 
+                         nvisits = nvisit, 
+                         nsample = nsample, 
+                         a_y = a_y, 
+                         a_c = a_c, 
+                         a_t = a_t)
+
+sim_save_fun <- function(nsim = nsim, 
+                         nvisits = nvisit, 
+                         nsample = nsample, 
+                         a_y = a_y, 
+                         a_c = a_c, 
+                         a_t = a_t) {
+  data <- DATA_GEN_censored_reduced(ns = nsample, 
+                            nv = nvisit, 
+                            outcome_prev = a_y, 
+                            conf = a_c, 
+                            treat_prev = a_t, 
+                            censor = TRUE)
+  
+  arrow::write_feather(data, sink = paste0("Simulation 1/datasets/data_", nsample, "_", nsim,".arrow"))
+}
+
+
+
+# Run simulations in parallel
+plan(multisession)
+set.seed(1337)
+future_pwalk(scenarios, sim_save_fun,
+             .options = furrr_options(seed = TRUE), .progress = TRUE)
+plan(sequential)
+
+
+

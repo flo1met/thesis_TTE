@@ -7,7 +7,7 @@ using Arrow
 using Pkg
 Pkg.develop(path = "../TargetTrialEmulation.jl")
 using TargetTrialEmulation
-using CategoricalArrays
+using Random
 using Base.Threads
 using ProgressMeter
 
@@ -61,15 +61,18 @@ end
 
 # Get list of files
 files = readdir("Simulation 1/datasets/")
-#files = ["data_1000_1.arrow", "data_1000_10.arrow"]
+#files = ["data_200_1.arrow", "data_200_10.arrow","data_200_16.arrow","data_200_15.arrow","data_200_14.arrow","data_200_13.arrow","data_200_12.arrow"]
 
 # Create a progress bar
 p = Progress(length(files); desc="Processing files... ")
 
 # Run in parallel with multithreading
-@threads for i in eachindex(files)
-    process_file(files[i], p)
+t = @elapsed begin
+    @threads for i in eachindex(files)
+        process_file(files[i], p)
+    end
 end
+
 
 
 

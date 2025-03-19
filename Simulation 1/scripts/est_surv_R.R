@@ -3,7 +3,9 @@
 library(arrow)
 library(TrialEmulation)
 library(furrr)
+library(tictoc)
 
+tic()
 files <- data.frame(file = list.files("Simulation 1/datasets/"))
 
 est <- function(file) {
@@ -32,6 +34,11 @@ est <- function(file) {
 
 plan(multisession)
 set.seed(1337)
-future_pwalk(files2, est,
+future_pwalk(files, est,
              .options = furrr_options(seed = TRUE), .progress = TRUE)
 plan(sequential)
+toc() 
+# in 1787?
+#Fehler in (function (.l, .f, ..., .progress = FALSE)  : 
+#             ℹ In index: 283.
+#           Caused by error in `mvtnorm::rmvnorm()`:

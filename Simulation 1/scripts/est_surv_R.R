@@ -29,8 +29,9 @@ est <- function(file) {
   
   out_surv <- predict(out_te, predict_times = 0:4, type = "surv")[[3]]
   
-  write_feather(out_surv, sink = paste0("Simulation 1/out/R/R_MRD_", file))
+  write_feather(out_surv, sink = paste0("Simulation 1/out/R/R_MRD_", file)) # write text file for reading
 }
+# include try catch/logger package
 
 plan(multisession)
 set.seed(1337)

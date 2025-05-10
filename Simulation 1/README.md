@@ -13,3 +13,5 @@ The number of visits is set to 5. All simulations are run with 1000 iterations.
 
 ## Files
     - simulate_MSM_simplified.R: retreived from https://github.com/juliettelimozin/Multiple-trial-emulation-IPTW-MSM-CIs/blob/ab7652133df470cbfb4e2d7ff9e7122eb40306fd/Code/simulate_MSM_simplified.R#L5
+
+    The Monte Carlo Errors (MCE) can be found in the file `out/MCE/MCE.csv`, plots of the MCE can be found in the folder `out/MCE/plots/`.

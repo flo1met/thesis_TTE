@@ -8,9 +8,9 @@ library(furrr)
 nsim = 1:1000# number of simulations
 nvisit = 5 # number of visits
 nsample = c(200, 1000, 5000) # sample size
-a_y = c(-3.8) # outcome event rate
-a_c = c(0.5) # confounding strength
-a_t = c(0) # treatment prevalence
+a_y = c(-4.7, -3.8, -3.0) # outcome event rate
+a_c = c(0.1, 0.5, 0.9) # confounding strength
+a_t = c(-1, 0, 1) # treatment prevalence
 
 
 scenarios <- expand.grid(nsim = nsim, 
@@ -33,7 +33,7 @@ sim_save_fun <- function(nsim = nsim,
                             treat_prev = a_t, 
                             censor = TRUE)
   
-  arrow::write_feather(data, sink = paste0("Simulation 1/datasets/data_", nsample, "_", nsim,".arrow"))
+  arrow::write_feather(data, sink = paste0("Simulation 1/datasets/data_", nsample, "_", a_y, "_", a_c, "_", a_t, "_",  nsim,".arrow"))
 }
 
 

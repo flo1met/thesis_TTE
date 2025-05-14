@@ -2,6 +2,7 @@ library(tidyverse)
 library(purrr)
 library(arrow)
 library(ggplot2)
+library(writexl)
 
 files <- data.frame(path = list.files("01_simulation_1/out/measures", full.names = TRUE)) %>%
   extract(
@@ -672,7 +673,9 @@ cov_emp_pct
 cov_sw_pct
 cov_emp_sw
 
+#save all measures as excel
 
+write_xlsx(all_measures, path = "01_simulation_1/out/all_measures.xlsx")
 
 
 

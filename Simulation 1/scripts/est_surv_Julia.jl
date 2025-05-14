@@ -1,7 +1,5 @@
 # Julia Analysis Simulation 1
 
-#### TODO: Seed the analysis correctly (change to multiprocessing?)
-
 using DataFrames
 using Arrow
 #using Pkg
@@ -9,14 +7,12 @@ using Arrow
 using TargetTrialEmulation
 using Random
 using Base.Threads
-using ProgressMeter
-
-# set seed
-Random.seed!(1337)
+#using ProgressMeter
+using Dates
 
 # Create log
-log_file = "Simulation 1/out/Julia/error_log.txt"
-mkpath("Simulation 1/out/Julia")
+log_file = "01_simulation_1/out/Julia/error_log_20250410.txt"
+mkpath("01_simulation_1/out/Julia")
 
 function drop_missing_union!(df::DataFrame)
     for col in names(df)
@@ -31,10 +27,10 @@ function drop_missing_union!(df::DataFrame)
     return df
 end
 
-function process_file(file, p)
+function process_file(file)
     try
         # Read data
-        data = Arrow.Table("Simulation 1/datasets/" * file) |> DataFrame
+        data = Arrow.Table("01_simulation_1/out/datasets/" * file) |> DataFrame
         drop_missing_union!(data)
 
         # Run TTE model
@@ -55,30 +51,38 @@ function process_file(file, p)
         )
 
         # Save results
-        Arrow.write("Simulation 1/out/Julia/Julia_MRD_" * file, mrd_out)
+        Arrow.write("01_simulation_1/out/Julia/Julia_MRD_" * file, mrd_out)
     catch e
         # Log error to file
         open(log_file, "a") do io
             println(io, "$(Dates.now()) - Error processing file $file: ", e)
         end
-    finally
-        next!(p)  # Update progress bar
+    #finally
+        #next!(p)  # Update progress bar
     end
 end
 
 # Get list of files
-files = readdir("Simulation 1/datasets/")
+files = readdir("01_simulation_1/out/datasets/")
 #files = ["data_200_1.arrow", "data_200_10.arrow","data_200_16.arrow","data_200_15.arrow","data_200_14.arrow","data_200_13.arrow","data_200_12.arrow"]
+files_already_processed = readdir("01_simulation_1/out/Julia/")
 
-# Create a progress bar
-p = Progress(length(files); desc="Processing files... ")
+# remove Julia_MRD_ from the file names
+files_already_processed = replace.(files_already_processed, r"^Julia_MRD_" => "")
+
+# filter files that are not .arrow
+files = filter(x -> occursin(".arrow", x), files)
+files_already_processed = filter(x -> occursin(".arrow", x), files_already_processed)
+
+# Filter out files that have already been processed
+setdiff!(files, files_already_processed)
+
 
 # Run in parallel with multithreading
-t = @elapsed begin
-    @threads for i in eachindex(files)
-        process_file(files[i], p)
-    end
+@threads for i in eachindex(files)
+    process_file(files[i])
 end
 
-
-
+#tests
+#files = ["test.txt", "data_200_1.arrow", "data_200_10.arrow","data_200_16.arrow","data_200_15.arrow","data_200_14.arrow","data_200_13.arrow","data_200_12.arrow"]
+#files_already_processed = ["test2.txt", "Julia_MRD_data_200_1.arrow", "Julia_MRD_data_200_10.arrow"]

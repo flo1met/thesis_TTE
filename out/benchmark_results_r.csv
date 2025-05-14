@@ -1,2 +1,0 @@
-"expression","min","median","itr/sec","mem_alloc","gc/sec","n_itr","n_gc","total_time","result","memory","time","gc"
-initiators(data = data, id = "id", period = "period", eligible = "eligible", ...,59.3s,59.3s,0.0168621157880078,23.3GB,0.236069621032109,1,14,59.3s,

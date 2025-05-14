@@ -1,5 +1,5 @@
 
-## simulate data for testing TrialEmulation package, using the algorithm in Young and Tchetgen Tchetgen (2014) 
+## simulate data using the algorithm in Young and Tchetgen Tchetgen (2014) 
 
 
 DATA_GEN_censored_reduced<-function(ns, nv, conf = 0.5, treat_prev = 0, 

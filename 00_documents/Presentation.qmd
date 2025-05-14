@@ -1,0 +1,127 @@
+---
+title: "Causal Inference with Observational Data"
+subtitle: "Confidence Intervals in Emulated Target Trials"
+date: "12/11/2024"
+date-format: "DD MMM YYYY"
+toc: false
+format: 
+  revealjs:
+    slide-number: true
+    logo: pres_files/UU_logo_2021_EN_RGB.png
+    footer: "Florian Metwaly"
+    css: pres_files/custom-style.css
+embed-resources: true
+bibliography: pres_files/bib_presentation.bib
+nocite: |
+  @fu_target_2023, @hernan_causal_nodate, @su_trialemulation_2024, @hernan_how_2018, @austin_variance_2016
+  
+---
+
+## Gold Standard of Causal Inference
+
+-   **Randomized control trials** are the gold standard of Causal Inference
+-   But, not always feasible
+    -   ethical limitations
+    -   practical limitations
+
+→ more and more common to use **observational data**
+
+::: notes
+-   Lets first talk about the Gold Standard in Causal Inference, RCTs
+-   example: smoking on lung cancer -\> unethical and would take decades
+-   especially in health sciences, use of large scale observational data, like EHR
+:::
+
+## Problem with Observational Data
+
+-   **Why can't we directly gain causal insights?**
+    -   Treatment assignment is **not randomized**
+    -   Eligibility and treatment start occur at **different time points**
+    -   Observational data is prone to **biases** (e.g. selection bias)
+
+→ Led to the development of the **Target Trial Emulation** framework
+
+::: notes
+:::
+
+## Target Trial Emulation
+
+-   **TTE aims to prevent introduction of biases in observational data**
+-   Researchers emulate a series of **trials**
+-   Core concept: **t₀ alignment**
+
+→ **sequential** TTE
+
+::: notes
+- emulate a series of trials that mimic rct
+-   Define t₀: the time point when eligibility is assessed, and treatment and fup begin.
+-   Mention the iterative nature of sequential TTE briefly.
+-   Core concept: **t₀ alignment** (ensuring comparable starting points for treatment evaluation)
+:::
+
+## 
+
+![](pres_files/TTE_slide.jpg)
+
+::: notes
+- 7 rows -> 14 rows
+- in case of potentially millions of EHR, the tables can become insanely large 
+:::
+
+## Research Gap
+
+-   **Confidence Intervals** can't be estimated directly anymore
+    -   one individual can be in multiple trials
+    -   IPW used for bias adjustments
+-   Literature recommends **non-parametric bootstrap**
+-   Two challenges:
+    -   **Computational efficiency** → `Julia`
+    -   **Sandwich-type** vs. **Bootstrap** variance estimation → Simulation Study
+
+::: notes
+- in practice: sandwich estimators
+- sandwich: analytic, but conservative
+- TTE itself is already computationally expensive, therefore in statistical software the analytic sandwich estimators are implemented. Bootstrap adds another layer of computational complexity.
+:::
+
+## Simulation Study
+
+- First, development of a `Julia` package
+
+<table style="border-collapse: collapse; width: 100%;">
+  <tr style="border-bottom: 2px solid black;">
+    <th style="text-align: left; padding-right: 10px; border-right: 1px solid black;">`Julia` TTE package vs. existing `R` package</th>
+    <th style="text-align: left; padding-left: 10px;">Sandwich-type vs. Bootstrap variance estimation</th>
+  </tr>
+  <tr>
+    <td style="padding-right: 10px; border-right: 1px solid black; vertical-align: top;">
+      <ul>
+        <li>Speed</li>
+        <li>Memory usage</li>
+      </ul>
+    </td>
+    <td style="padding-left: 10px;">
+      <ul>
+        <li>Coverage</li>
+        <li>Width of CI</li>
+        <li>Type-I error rate</li>
+        <li>Power</li>
+      </ul>
+    </td>
+  </tr>
+</table>
+
+::: notes
+- Julia: modern, fast, memory efficient, especially compared to R
+- varying sample sizes, size of treatment groups and amount of information introduced
+
+- sandwich type estimators, which are implemented in R package
+
+- trade off between statistical efficancy and computational complexity is worth using the bootstrap
+:::
+
+
+## Sources
+
+::: {.bibliography}
+:::

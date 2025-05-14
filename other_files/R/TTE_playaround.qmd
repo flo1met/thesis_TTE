@@ -1,0 +1,460 @@
+---
+title: "Trial Emulation Test"
+format: html
+---
+
+```{r}
+library(TrialEmulation)
+```
+
+
+```{r}
+# Prepare the example data
+data("trial_example")
+# Set columns to factors as necessary
+trial_example$catvarA <- as.factor(trial_example$catvarA)
+trial_example$catvarB <- as.factor(trial_example$catvarB)
+trial_example$catvarC <- as.factor(trial_example$catvarC)
+
+t1 <- Sys.time()
+result_2 <- initiators(
+  data = trial_example,
+  id = "id",
+  period = "period",
+  eligible = "eligible",
+  treatment = "treatment",
+  estimand_type = "ITT",
+  outcome = "outcome",
+  model_var = "assigned_treatment",
+  outcome_cov = c("catvarA", "catvarB", "catvarC", "nvarA", "nvarB", "nvarC"),
+  use_censor_weights = FALSE,
+  pool_cense = "none"
+)
+t2 <- Sys.time()
+t2-t1
+
+
+df_te <- result_2$model$data
+
+glm(formula = outcome ~ assigned_treatment + trial_period + I(trial_period^2) + followup_time + I(followup_time^2) + catvarA + catvarB + catvarC + nvarA + nvarB + nvarC, family = binomial(link = "logit"), 
+    data = df_te)
+```
+
+
+
+
+```{r}
+df_julia <- read.csv("df_julia.csv")
+
+df_julia$catvarA <- as.factor(df_julia$catvarA)
+df_julia$catvarB <- as.factor(df_julia$catvarB)
+df_julia$catvarC <- as.factor(df_julia$catvarC)
+
+glm(formula = outcome ~ baseline_treatment + trialnr + I(trialnr^2) + fup + I(fup^2) + catvarA + catvarB + catvarC + nvarA + nvarB + nvarC, family = binomial(link = "logit"), 
+    data = df_julia)
+```
+
+
+
+
+```{r}
+df_julia <- df_julia %>%
+  arrange(id, trialnr)
+
+j_f <- df_julia %>% filter(id == 1)
+
+df_te <- df_te %>%
+  arrange(id, trial_period)
+
+te_f <- df_te %>% filter(id == 1)
+```
+
+
+
+
+```{r}
+summary(result_2)
+```
+
+
+```{r}
+w <- result_2[["model"]]$weights
+d <- result_2[["model"]]$data
+
+sum(as.numeric(d$catvarA))
+
+d$weight <- w
+write.csv(d, "data.csv", row.names = FALSE)
+#rm(result_2)
+
+glm(outcome ~ assigned_treatment + trial_period + I(trial_period^2) + 
+    followup_time + I(followup_time^2) + catvarA + catvarB + 
+    catvarC + nvarA + nvarB + nvarC, family = binomial(link = "logit"), data = d, weights = d$weight)
+
+```
+
+
+
+```{r}
+t1 <- Sys.time()
+result <- initiators(
+  data = trial_example,
+  id = "id",
+  period = "period",
+  eligible = "eligible",
+  treatment = "treatment",
+  estimand_type = "ITT",
+  outcome = "outcome",
+  model_var = "assigned_treatment",
+  outcome_cov = c("catvarA", "catvarB", "catvarC", "nvarA", "nvarB", "nvarC"),
+  use_censor_weights = FALSE,
+  save_weight_models = TRUE,
+  data_dir = "C:/Users/Florian/Documents/Utrecht University/05_thesis/BIOSTAT-07 - Confidence Intervals in Emulated Target Trials",
+  switch_n_cov = "period + I(period^2)",
+  switch_d_cov = "catvarA + catvarB + catvarC + nvarA + nvarB + nvarC + period + I(period^2)",
+  pool_cense = "none"
+)
+t2 <- Sys.time()
+t2-t1
+```
+
+
+```{r}
+test <- data_preparation(data = trial_example,
+  id = "id",
+  period = "period",
+  eligible = "eligible",
+  treatment = "treatment",
+  estimand_type = "ITT",
+  outcome = "outcome",
+  model_var = "assigned_treatment",
+  outcome_cov = c("catvarA", "catvarB", "catvarC", "nvarA", "nvarB", "nvarC"),
+  use_censor_weights = FALSE,
+  analysis_weights = "asis",
+  save_weight_models = TRUE,
+  data_dir = "C:/Users/Florian/Documents/Utrecht University/05_thesis/BIOSTAT-07 - Confidence Intervals in Emulated Target Trials"
+  )
+
+out <- trial_msm(test, estimand_type = "ITT",
+  outcome = "outcome",
+  model_var = "assigned_treatment",
+  use_sample_weights = FALSE)
+
+library(tidyverse)
+df_test <- test$data %>%
+  arrange(id, trial_period)
+```
+
+```{r}
+summary(result)
+```
+
+```{r}
+summary(result$model)
+
+```
+
+```{r}
+print(result$robust$summary)
+```
+
+```{r}
+# only print the first columns
+head(result$robust$matrix, c(17, 4))
+```
+
+```{r}
+te <- data_preparation(data = trial_example,
+  id = "id",
+  period = "period",
+  eligible = "eligible",
+  treatment = "treatment",
+  outcome = "outcome",
+  outcome_cov = ~ catvarA + catvarB + nvarA + nvarB + nvarC,
+  data_dir = getwd(),
+  save_weight_models = FALSE,
+  estimand_type = "PP",
+  pool_cense = "none",
+  use_censor_weights = FALSE,
+  chunk_size = 500,
+  separate_files = TRUE,
+  switch_n_cov = ~ nvarA + nvarB,
+  quiet = TRUE)
+
+```
+
+```{r}
+t <- read_csv("trial_150.csv")
+```
+
+
+```{r}
+library(tidyverse)
+```
+
+
+
+
+# seqtrial
+```{r}
+data_simulator <- function(
+    n,
+    n_visit,
+    gamma_0 = -1,
+    gamma_L = 0.5,
+    alpha_0 = 0.2,
+    alpha_A = -0.04,
+    alpha_L = 0.015,
+    alpha_U = 0.015
+){
+  # expit function
+  expit <- function(x){exp(x) / (1 + exp(x))}
+  # generate U, A, L
+  A <- matrix(nrow = n, ncol = n_visit)
+  L <- matrix(nrow = n, ncol = n_visit)
+  U <- stats::rnorm(n, 0, 0.1)
+  L[,1] <- stats::rnorm(n, U, 1)
+  A[,1] <- stats::rbinom(n, 1, expit(gamma_0 + gamma_L * L[,1]))
+  for (k in 2:n_visit){
+    L[,k] <- stats::rnorm(n, 0.8*L[,k - 1] - A[,k - 1] + 0.1*(k - 1) + U, 1)
+    A[,k] <- ifelse(A[,k - 1] == 1, 1, stats::rbinom(n, 1, expit(gamma_0 + gamma_L * L[,k])))
+  }
+  # generate event times fup, and event indicator 'status'
+  fup <- rep(NA, n)
+  for (k in 1:n_visit){
+    u_t <- stats::runif(n, 0, 1)
+    haz <- alpha_0 + alpha_A * A[,k] + alpha_L * L[,k] + alpha_U * U
+    new_t <- -log(u_t) / haz
+    fup <- ifelse(is.na(fup) & new_t < 1 & haz > 0, k - 1 + new_t, fup) # the haz>0 is just used to deal with tiny possibility (under this data generating mechanism) the hazard could go negative
+  }
+  status <- ifelse(is.na(fup), 0L, 1L)
+  fup <- ifelse(is.na(fup), n_visit, fup) # max number of visits if NA
+  fup <- ceiling(fup) %>% as.integer()
+  A <- A %>% tibble::as_tibble() %>%
+    dplyr::mutate(sum_A = rowSums(.),
+                  A = dplyr::if_else(sum_A >= 1, 1L, 0L),
+                  tt_A = dplyr::if_else(sum_A >= 1, as.integer(n_visit - sum_A), 5L)) %>%
+    dplyr::select(A, tt_A)
+  L <- tibble::as_tibble(L)
+  colnames(L) <- paste0("L", 0:{n_visit - 1})
+  data <-
+    tibble::tibble(id = 1:n, fup, status, A, L)
+}
+```
+
+```{r}
+data_test <- data_simulator(n = 100, n_visit = 30)
+```
+
+
+```{r}
+data_splitter <- function(
+    data,
+    id = id,
+    fup = fup,
+    status = status,
+    treatment,
+    tt_treatment
+){
+  data %>%
+    dplyr::group_by({{ id }}) %>%
+    tidyr::uncount({{ fup }}, .remove = FALSE) %>%
+    dplyr::mutate(tend = dplyr::row_number(),
+                  tstart = tend - 1L,
+                  "{{ status }}" := dplyr::if_else(tend == {{ fup }}, {{ status }}, 0L),
+                  "{{ treatment }}" := dplyr::if_else(tstart == {{ tt_treatment }} | tstart > {{ tt_treatment }}, {{ treatment }}, 0L)) %>%
+    dplyr::select(- c({{ fup }}, {{ tt_treatment }})) %>%
+    dplyr::relocate({{ id }}, tstart, tend) %>%
+    dplyr::ungroup()
+}
+load("paxlovid.rda")
+ds_test <- data_splitter(data_test, treatment = A, tt_treatment = tt_A)
+```
+
+```{r}
+trial_constructor <- function(
+    data_splitted,
+    n,
+    id = id,
+    status = status,
+    treatment,
+    censor = FALSE # artifical censoring if patient deviates from baseline treatment
+){
+  seq_trials <-
+    purrr::map_dfr(
+      .x = 0:{n - 1},
+      .f = ~ construct_trial_n(data_splitted, .x, {{ id }}, {{ treatment }}, {{ status }})
+      )
+  if (censor == TRUE) {
+    seq_trials <-
+      seq_trials %>%
+      dplyr::group_by({{ id }}, trial) %>%
+      dplyr::filter(!(arm == 0 & {{ treatment }} == 1)) %>%
+      dplyr::ungroup()
+  }
+  seq_trials
+}
+construct_trial_n <- function(data_splitted,
+                              n, # day of start, 0 is the trial that starts at baseline, 1 is the trial that starts one day after baseline etc.
+                              id, # id var
+                              treatment, # treatment var
+                              status # status var
+){
+  data_splitted %>%
+    dplyr::group_by({{ id }}) %>%
+    dplyr::mutate(
+      treatment_lag1 = dplyr::lag({{ treatment }}, n = 1, default = 0)
+      ) %>%
+    dplyr::filter(tstart >= n) %>%
+    dplyr::mutate(trial = n + 1) %>%
+    dplyr::mutate(
+      arm = dplyr::first({{ treatment }}),
+      treatment_lag1_baseline = dplyr::first(treatment_lag1),
+      tstart = tstart - n,
+      tend = tend - n
+      ) %>%
+    dplyr::filter(
+      treatment_lag1_baseline == 0
+      ) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(
+      -c(treatment_lag1_baseline, treatment_lag1)
+      ) %>%
+    #dplyr::rename("{{ treatment }}_lag1" := treatment_lag1) %>%
+    dplyr::relocate({{ id }}, trial, arm)
+}
+```
+
+```{r}
+ds_test2 <- trial_constructor(data = ds_test,
+                  n = 100,
+                  treatment = A)
+```
+
+
+
+# test censored
+```{r}
+load("C:/Users/fmetwaly/OneDrive - UMC Utrecht/Documenten/GitHub/thesis_TTE/data/data_censored.rda")
+```
+
+```{r}
+data_censored$x1 <- as.factor(data_censored$x1)
+data_censored$x3 <- as.factor(data_censored$x3)
+```
+
+```{r}
+library(TrialEmulation)
+```
+
+```{r}
+t1 <- Sys.time()
+out_te <- initiators(
+  data = data_censored,
+  id = "id",
+  period = "period",
+  eligible = "eligible",
+  treatment = "treatment",
+  estimand_type = "ITT",
+  outcome = "outcome",
+  model_var = "assigned_treatment",
+  outcome_cov = c("x1", "x2", "x3", "x4", "age"),
+  use_censor_weights = TRUE,
+  cense = "censored",
+  pool_cense = "both",
+  cense_n_cov = ~ period + I(period^2),
+  cense_d_cov = ~ x1 + x2 + x3 + x4 + age + period + I(period^2),
+  include_followup_time = ~followup_time + I(followup_time^2)
+)
+t2 <- Sys.time()
+t2-t1
+  
+
+df_te <- out_te$model$data
+
+
+#censormodel <-readRDS("cense_model_pool_d.rds")$data
+
+#summary(readRDS("cense_model_pool_n.rds"))
+
+#df_j <- read.csv("IPCW.csv")
+#summary(glm(censored == 0 ~ period + I(period^2), family = binomial(link = "logit"), data = df_j))
+
+  
+  
+```
+
+```{r}
+
+```
+
+
+
+```{r}
+outTE <- data_preparation(data = data_censored,
+                          id = "id",
+                          period = "period",
+                          eligible = "eligible",
+                          treatment = "treatment",
+                          estimand_type = "ITT",
+                          outcome = "outcome",
+                          model_var = "assigned_treatment",
+                          outcome_cov = c("x1", "x2", "x3", "x4", "age"))
+
+outJI <- read.csv("C:/Users/fmetwaly/OneDrive - UMC Utrecht/Documenten/GitHub/thesis_TTE/data/test.csv") %>%
+  arrange(id)
+  
+
+
+
+outTE <- outTE$data
+```
+
+
+
+
+
+
+```{r}
+t1 <- Sys.time()
+result <- initiators(
+  data = data_censored,
+  id = "id",
+  period = "period",
+  eligible = "eligible",
+  treatment = "treatment",
+  estimand_type = "ITT",
+  outcome = "outcome",
+  model_var = "assigned_treatment",
+  outcome_cov = c("x1", "x2", "x3", "x4", "age"),
+  use_censor_weights = TRUE,
+  cense = "censored",
+  switch_n_cov = ~ period + I(period^2),
+  switch_d_cov = ~ x1 + x2 + x3 + x4 + age + period + I(period^2),
+  cense_n_cov = ~ period + I(period^2),
+  cense_d_cov = ~ x1 + x2 + x3 + x4 + age + period + I(period^2)
+)
+t2 <- Sys.time()
+t2-t1
+```
+
+```{r}
+summary(result$model)
+
+
+```
+
+```{r}
+load("C:/Users/fmetwaly/OneDrive - UMC Utrecht/Documenten/GitHub/thesis_TTE/data/data_censored.rda")
+
+write.csv(data_censored, file = "C:/Users/fmetwaly/OneDrive - UMC Utrecht/Documenten/GitHub/thesis_TTE/data/data_censored.csv")
+
+write.csv(out_te$model$data, file = "C:/Users/fmetwaly/OneDrive - UMC Utrecht/Documenten/GitHub/thesis_TTE/data/data_censored_sequential.csv")
+
+```
+
+
+```{r}
+
+```
+

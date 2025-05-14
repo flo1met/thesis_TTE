@@ -1,0 +1,238 @@
+---
+title: "TE_MRD started"
+format: html
+---
+
+```{r}
+library(TrialEmulation)
+```
+
+
+```{r}
+load("../data/data_censored.rda")
+data2 <- read.csv("../data/data_simulated.csv")
+```
+
+```{r}
+data2$x1 <- as.factor(data2$x1)
+data2$x3 <- as.factor(data2$x3)
+```
+
+```{r}
+#names(data3) <- names(data_censored)
+```
+
+
+```{r}
+t1 <- Sys.time()
+out_te <- initiators(
+  data = data2,
+  id = "id",
+  period = "period",
+  eligible = "eligible",
+  treatment = "treatment",
+  estimand_type = "ITT",
+  outcome = "outcome",
+  model_var = "assigned_treatment",
+  outcome_cov = c("x1", "x2", "x3", "x4", "age"),
+  use_censor_weights = TRUE,
+  cense = "censored",
+  pool_cense = "both",
+  cense_n_cov = ~ period + I(period^2),
+  cense_d_cov = ~ x1 + x2 + x3 + x4 + age + period + I(period^2),
+  include_followup_time = ~followup_time + I(followup_time^2)
+)
+Sys.time() - t1
+
+out_te
+summary(out_te$model)
+```
+
+
+```{r}
+summary(out_te$model)
+nrow(out_te$robust$matrix)
+ncol(out_te$robust$matrix)
+```
+
+```{r}
+df <- predict(out_te, predict_times = 0:4)
+df_0 <- df$assigned_treatment_0
+df_0$S <- 1-df_0$cum_inc
+df_1 <- df$assigned_treatment_1
+df_1$S <- 1-df_1$cum_inc
+```
+
+```{r}
+(out_pred_cum_inc <- predict(out_te, predict_times = 0:4, type = "cum_inc"))
+(out_pred_surv <- predict(out_te, predict_times = 0:4, type = "survival"))
+```
+
+```{r}
+out_pred_surv$assigned_treatment_0$survival
+cumprod(out_pred_surv$assigned_treatment_0$survival)
+
+out_pred_surv$difference$survival_diff
+cumprod(out_pred_surv$difference$survival_diff)
+```
+
+```{r}
+cumsurv$S_0
+```
+
+
+```{r}
+#write.csv(data3, file = "../data/data_simulated.csv")
+```
+
+
+
+```{r}
+library(tidyverse)
+```
+
+
+# self predict
+Same as Julia
+```{r}
+out_df <- df_out_new
+
+#out_df <- out_te$model$data
+out_model <- out_te$model
+
+out_df$assigned_treatment <- 0
+out_df$S_0 <- 1 - predict(out_model, out_df,type = "response")
+out_df$assigned_treatment <- 1
+out_df$S_1 <- 1 - predict(out_model, out_df,type = "response")
+```
+
+```{r}
+out_df <- out_df %>%
+  group_by(trial_period, id) %>%
+  mutate(cum_S_0 = cumprod(S_0),
+         cum_S_1 = cumprod(S_1))
+
+(cumsurv <- out_df %>%
+  group_by(followup_time) %>%
+  summarise(S_0 = mean(cum_S_0),
+            S_1 = mean(cum_S_1)) %>%
+  mutate(MRD_hat = S_1 - S_0))
+```
+
+$$\sum^K_{k=0} [h^a(k) \prod^{k-1}_{j=0} \{1-h^a(j)\}]$$
+
+```{r}
+out_df$assigned_treatment <- 0
+out_df$h_0 <- predict(out_model, out_df,type = "response")
+out_df$assigned_treatment <- 1
+out_df$h_1 <- predict(out_model, out_df,type = "response")
+
+
+cumhaz <- out_df %>%
+  group_by(trial_period, id) %>%
+  mutate(
+    term_0 = cumsum(h_0*cumprod(1 - lag(h_0, default = 0))),
+    term_1 = cumsum(h_1*cumprod(1 - lag(h_1, default = 0)))
+  ) 
+
+
+(cumhaz <- cumhaz %>%
+    group_by(followup_time) %>%
+    summarise(
+      term_0 = mean(term_0), 
+      term_1 = mean(term_1)) %>%
+    mutate(term_diff = term_1 - term_0)
+)
+```
+
+
+```{r}
+cumhaz <- out_df %>%
+  group_by(trial_period, id) %>%
+  arrange(followup_time) %>%  # Ensure time ordering
+  mutate(
+    survival_0 = cumprod(1 - h_0),  # Survival probability up to k-1
+    survival_1 = cumprod(1 - h_1),
+    term_0 = cumsum(h_0 * lag(survival_0, default = 1)),  
+    term_1 = cumsum(h_1 * lag(survival_1, default = 1))
+  ) %>%
+  ungroup()
+
+# Aggregating by follow-up time
+cumhaz <- cumhaz %>%
+  group_by(followup_time) %>%
+  summarise(
+    term_0 = mean(term_0, na.rm = TRUE), 
+    term_1 = mean(term_1, na.rm = TRUE)
+  ) %>%
+  mutate(term_diff = term_1 - term_0)
+
+print(cumhaz)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+# baselone data
+```{r}
+out_df <- out_te$model$data[trial_period == 1]
+out_model <- out_te$model
+
+out_df$assigned_treatment <- 0
+out_df$S_0 <- 1 - predict(out_model, out_df,type = "response")
+out_df$assigned_treatment <- 1
+out_df$S_1 <- 1 - predict(out_model, out_df,type = "response")
+```
+
+
+
+```{r}
+out_df <- out_df %>%
+  group_by(trial_period, id) %>%
+  mutate(cum_S_0 = cumprod(S_0),
+         cum_S_1 = cumprod(S_1))
+
+(cumsurv <- out_df %>%
+  group_by(followup_time) %>%
+  summarise(S_0 = mean(cum_S_0),
+            S_1 = mean(cum_S_1)) %>%
+  mutate(MRD_hat = S_1 - S_0))
+
+
+(cumsurv2 <- out_df %>%
+  group_by(followup_time) %>%
+  summarise(weighted_survival_0 = sum(cum_S_0 * weight) / sum(weight),
+            weighted_survival_1 = sum(cum_S_1 * weight) / sum(weight)) %>%
+  mutate(diff = weighted_survival_1-weighted_survival_0))
+
+```
+
+same as Julia\
+
+
+```{r}
+newdat <- function(newdata, predict_times) {
+  newdata <- newdata[followup_time == 0]
+  n_baseline <- nrow(newdata)
+  newdata <- newdata[rep(seq_len(n_baseline), times = length(predict_times)), ]
+  newdata$followup_time <- rep(predict_times, each = n_baseline)
+
+  newdata
+}
+
+```
+
+```{r}
+df_out_new <- newdat(out_df, 0:4)
+```
+

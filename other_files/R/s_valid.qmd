@@ -1,0 +1,275 @@
+---
+title: "Bootstrap Validation"
+format: html
+---
+
+```{r}
+library(tidyverse)
+library(TrialEmulation)
+library(assertions)
+source("data_simulation.R")
+newdat <- function(newdata, predict_times) {
+  newdata <- newdata[followup_time == 0]
+  n_baseline <- nrow(newdata)
+  newdata <- newdata[rep(seq_len(n_baseline), times = length(predict_times)), ]
+  newdata$followup_time <- rep(predict_times, each = n_baseline)
+
+  newdata
+}
+```
+
+```{r}
+set.seed(1337)
+
+data <- data_gen_censored(500, 1, censor = FALSE)
+data <- data[, c("ID", "t", "A", "X1", "X2", "X3", "X4", "age", "age_s", "Y", "eligible")]
+
+names(data) <- c("id", "period", "treatment", "x1", "x2", "x3", "x4", "age", "age_s", "outcome", "eligible")
+
+#write.csv(data, "../data/sim_data_k1.csv")
+
+data$x1 <- as.factor(data$x1)
+data$x3 <- as.factor(data$x3)
+```
+
+```{r}
+out_te <- initiators(
+  data = data,
+  id = "id",
+  period = "period",
+  eligible = "eligible",
+  treatment = "treatment",
+  estimand_type = "ITT",
+  outcome = "outcome",
+  model_var = "assigned_treatment",
+  outcome_cov = c("x1", "x2", "x3", "x4", "age"),
+  use_censor_weights = FALSE,
+  #include_followup_time = ~followup_time + I(followup_time^2)
+)
+```
+
+
+```{r}
+Sigma <- out_te$robust$matrix
+beta <- coef(out_te$model)
+beta <- beta[c(1:2, 7:11)]
+model <- out_te$model
+df_out <- out_te$model$data
+surv <- NA
+B <- 1000
+t <- Sys.time()
+for (i in 1:B) {
+  cat("\rIteration:", i, "/", B)
+  beta_s <- MASS::mvrnorm(1, beta, Sigma)
+  beta_s <- c(beta_s[1], beta_s[2], NA, NA, NA, NA, beta_s[3:7])
+  names(beta_s) <- names(coef(out_te$model))
+  model$coefficients <- beta_s
+  df_out_new <- newdat(df_out, 0)
+  df_out_new$assigned_treatment <- 0
+  df_out_new$S_0 <- 1 - predict(model, df_out_new, type = "response")
+  df_out_new$assigned_treatment <- 1
+  df_out_new$S_1 <- 1 - predict(model, df_out_new, type = "response")
+  df_out_new <- df_out_new %>%
+    group_by(trial_period, id) %>%
+    mutate(cum_S_0 = cumprod(S_0), cum_S_1 = cumprod(S_1))
+  
+  (
+    cumsurv <- df_out_new %>%
+      group_by(followup_time) %>%
+      summarise(S_0 = mean(cum_S_0), S_1 = mean(cum_S_1)) %>%
+      mutate(MRD_hat = S_1 - S_0)
+  )
+  surv[i] <- cumsurv$MRD_hat
+}
+Sys.time() - t
+
+(CIlow <- quantile(surv, 0.025)) # -0.006733354 
+(CIhigh <-  quantile(surv, 0.975)) # 0.09058563
+hist(surv)
+mean(surv)
+
+```
+
+Iteration: 10000 / 10000Time difference of 5.670421 mins
+        2.5% 
+-0.005848051 
+    97.5% 
+0.0918222 
+
+
+
+
+######### test if it works
+```{r}
+data2 <- read.csv("../data/data_simulated.csv")
+
+data2$x1 <- as.factor(data2$x1)
+data2$x3 <- as.factor(data2$x3)
+
+t1 <- Sys.time()
+out_te_2 <- initiators(
+  data = data2,
+  id = "id",
+  period = "period",
+  eligible = "eligible",
+  treatment = "treatment",
+  estimand_type = "ITT",
+  outcome = "outcome",
+  model_var = "assigned_treatment",
+  outcome_cov = c("x1", "x2", "x3", "x4", "age"),
+  use_censor_weights = TRUE,
+  cense = "censored",
+  pool_cense = "both",
+  cense_n_cov = ~ period + I(period^2),
+  cense_d_cov = ~ x1 + x2 + x3 + x4 + age + period + I(period^2),
+  include_followup_time = ~followup_time + I(followup_time^2)
+)
+Sys.time() - t1
+
+(out_sw <- predict(out_te_2, predict_times = 0:1, type = "survival"))
+out_sw$difference$`97.5%`
+```
+
+
+
+
+
+```{r}
+Sigma <- out_te_2$robust$matrix
+beta <- coef(out_te_2$model)
+#beta <- beta[c(1:2, 7:11)]
+model <- out_te_2$model
+out_df2 <- out_te_2$model$data
+surv <- NA
+B <- 1000
+
+#### get PE
+df_out_new <- newdat(out_df2, 0)
+df_out_new$assigned_treatment <- 0
+df_out_new$S_0 <- 1 - predict(model, df_out_new, type = "response")
+df_out_new$assigned_treatment <- 1
+df_out_new$S_1 <- 1 - predict(model, df_out_new, type = "response")
+df_out_new <- df_out_new %>%
+  group_by(trial_period, id) %>%
+  mutate(cum_S_0 = cumprod(S_0), cum_S_1 = cumprod(S_1))
+  
+
+cumsurv_PE <- df_out_new %>%
+  group_by(followup_time) %>%
+  summarise(S_0 = mean(cum_S_0), S_1 = mean(cum_S_1)) %>%
+  mutate(MRD_hat = S_1 - S_0)
+####
+
+for (i in 1:B) {
+  cat("\rIteration:", i, "/", B)
+  beta_s <- MASS::mvrnorm(1, beta, Sigma)
+  #beta_s <- c(beta_s[1], beta_s[2], NA, NA, NA, NA, beta_s[3:7])
+  names(beta_s) <- names(coef(out_te_2$model))
+  model$coefficients <- beta_s
+  df_out_new <- newdat(out_df2, 0)
+  df_out_new$assigned_treatment <- 0
+  df_out_new$S_0 <- 1 - predict(model, df_out_new, type = "response")
+  df_out_new$assigned_treatment <- 1
+  df_out_new$S_1 <- 1 - predict(model, df_out_new, type = "response")
+  df_out_new <- df_out_new %>%
+    group_by(trial_period, id) %>%
+    mutate(cum_S_0 = cumprod(S_0), cum_S_1 = cumprod(S_1))
+  
+  (
+    cumsurv <- df_out_new %>%
+      group_by(followup_time) %>%
+      summarise(S_0 = mean(cum_S_0), S_1 = mean(cum_S_1)) %>%
+      mutate(MRD_hat = S_1 - S_0)
+  )
+  surv[i] <- cumsurv$MRD_hat
+}
+
+
+cumsurv_PE
+(CIlow <- quantile(surv, 0.025))
+(CIhigh <-  quantile(surv, 0.975))
+
+```
+
+
+# Test 50k
+```{r}
+data50k <- read.csv("../data/sim_data_k1_50k.csv")
+```
+
+```{r}
+data50k$x1 <- as.factor(data50k$x1)
+data50k$x3 <- as.factor(data50k$x3)
+
+t2 <- Sys.time()
+out_te_50k <- initiators(
+  data = data50k,
+  id = "id",
+  period = "period",
+  eligible = "eligible",
+  treatment = "treatment",
+  estimand_type = "ITT",
+  outcome = "outcome",
+  model_var = "assigned_treatment",
+  outcome_cov = c("x1", "x2", "x3", "x4", "age"),
+  use_censor_weights = FALSE
+  #include_followup_time = ~followup_time + I(followup_time^2)
+)
+Sys.time() - t2
+```
+
+```{r}
+Sigma <- out_te_50k$robust$matrix
+beta <- coef(out_te_50k$model)
+beta <- beta[c(1:2, 7:11)]
+model <- out_te_50k$model
+df_out <- out_te_50k$model$data
+surv <- NA
+B <- 1000
+t <- Sys.time()
+for (i in 1:B) {
+  cat("\rIteration:", i, "/", B)
+  beta_s <- MASS::mvrnorm(1, beta, Sigma)
+  beta_s <- c(beta_s[1], beta_s[2], NA, NA, NA, NA, beta_s[3:7])
+  names(beta_s) <- names(coef(out_te_50k$model))
+  model$coefficients <- beta_s
+  df_out_new <- newdat(df_out, 0)
+  df_out_new$assigned_treatment <- 0
+  df_out_new$S_0 <- 1 - predict(model, df_out_new, type = "response")
+  df_out_new$assigned_treatment <- 1
+  df_out_new$S_1 <- 1 - predict(model, df_out_new, type = "response")
+  df_out_new <- df_out_new %>%
+    group_by(trial_period, id) %>%
+    mutate(cum_S_0 = cumprod(S_0), cum_S_1 = cumprod(S_1))
+  
+  (
+    cumsurv <- df_out_new %>%
+      group_by(followup_time) %>%
+      summarise(S_0 = mean(cum_S_0), S_1 = mean(cum_S_1)) %>%
+      mutate(MRD_hat = S_1 - S_0)
+  )
+  surv[i] <- cumsurv$MRD_hat
+}
+Sys.time() - t
+
+(CIlow <- quantile(surv, 0.025)) # 0.01653849  
+(CIhigh <-  quantile(surv, 0.975)) # 0.02336333 
+hist(surv)
+mean(surv) #0.01988055
+```
+
+
+
+
+###########################
+```{r}
+library(survival)
+cox_model <- coxph(Surv(period, outcome) ~ treatment + x1 + x2 + x3 + x4 + age, data = data)
+summary(cox_model)
+confint(cox_model)
+```
+
+
+
+
+

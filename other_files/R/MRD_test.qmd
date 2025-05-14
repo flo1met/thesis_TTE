@@ -1,0 +1,140 @@
+---
+title: "MRD"
+format: html
+---
+
+```{r}
+library(TrialEmulation)
+library(tidyverse)
+```
+
+
+```{r}
+data2 <- read.csv("../data/data_simulated.csv")
+```
+
+```{r}
+data2$x1 <- as.factor(data2$x1)
+data2$x3 <- as.factor(data2$x3)
+```
+
+```{r}
+t1 <- Sys.time()
+out_te <- initiators(
+  data = data2,
+  id = "id",
+  period = "period",
+  eligible = "eligible",
+  treatment = "treatment",
+  estimand_type = "ITT",
+  outcome = "outcome",
+  model_var = "assigned_treatment",
+  outcome_cov = c("x1", "x2", "x3", "x4", "age"),
+  use_censor_weights = TRUE,
+  cense = "censored",
+  pool_cense = "both",
+  cense_n_cov = ~ period + I(period^2),
+  cense_d_cov = ~ x1 + x2 + x3 + x4 + age + period + I(period^2),
+  include_followup_time = ~followup_time + I(followup_time^2)
+)
+Sys.time() - t1
+```
+
+```{r}
+#(out_pred_cum_inc <- predict(out_te, predict_times = 0:4, type = "cum_inc"))
+out_pred_surv <- predict(out_te, predict_times = 0:4, type = "survival")
+out_pred_surv$difference
+```
+
+$$\sum^K_{k=0} [h^a(k) \prod^{k-1}_{j=0} \{1-h^a(j)\}]$$
+
+# Same as Julia
+```{r}
+out_df <- out_te$model$data
+out_model <- out_te$model
+
+out_df$assigned_treatment <- 0
+out_df$S_0 <- 1 - predict(out_model, out_df,type = "response")
+out_df$assigned_treatment <- 1
+out_df$S_1 <- 1 - predict(out_model, out_df,type = "response")
+```
+
+```{r}
+out_df <- out_df %>%
+  group_by(trial_period, id) %>%
+  mutate(cum_S_0 = cumprod(S_0),
+         cum_S_1 = cumprod(S_1))
+
+(cumsurv <- out_df %>%
+  group_by(followup_time) %>%
+  summarise(S_0 = mean(cum_S_0),
+            S_1 = mean(cum_S_1)) %>%
+  mutate(MRD_hat = S_1 - S_0))
+```
+
+
+# TrialEmulation
+```{r}
+newdat <- function(newdata, predict_times) {
+  newdata <- newdata[followup_time == 0]
+  n_baseline <- nrow(newdata)
+  newdata <- newdata[rep(seq_len(n_baseline), times = length(predict_times)), ]
+  newdata$followup_time <- rep(predict_times, each = n_baseline)
+
+  newdata
+}
+
+```
+
+```{r}
+out_df2 <- out_te$model$data
+df_out_new <- newdat(out_df2, 0:4)
+```
+
+```{r}
+df_out_new$assigned_treatment <- 0
+df_out_new$S_0 <- 1 - predict(out_model, df_out_new,type = "response")
+df_out_new$assigned_treatment <- 1
+df_out_new$S_1 <- 1 - predict(out_model, df_out_new,type = "response")
+```
+
+```{r}
+df_out_new <- df_out_new %>%
+  group_by(trial_period, id) %>%
+  mutate(cum_S_0 = cumprod(S_0),
+         cum_S_1 = cumprod(S_1))
+
+(cumsurv <- df_out_new %>%
+  group_by(followup_time) %>%
+  summarise(S_0 = mean(cum_S_0),
+            S_1 = mean(cum_S_1)) %>%
+  mutate(MRD_hat = S_1 - S_0))
+```
+
+
+
+# Trial EMulation gives unstable CIs:
+
+
+```{r}
+# Trial Emulation gives unstable CIs:
+t <- Sys.time()
+iter <- 10000
+CIlow_sw <- NA
+CIhigh_sw <- NA
+for (i in 1:iter) {
+  cat("\rIteration:", i, "/", iter)
+  out <- predict(out_te_2, predict_times = 0:1, type = "survival")
+  CIlow_sw[i] <- out$difference$`2.5%`[1]
+  CIhigh_sw[i] <- out$difference$`97.5%`[1]
+}
+Sys.time() - t # 1.3h
+
+predict(out_te_2, predict_times = 0:1, type = "survival")$difference$`survival_diff`[1]
+hist(CIlow_sw)
+hist(CIhigh_sw)
+mean(CIlow_sw) #-0.004951647
+mean(CIhigh_sw) #0.01313836
+sd(CIlow_sw) #0.0007712128
+sd(CIhigh_sw)#0.002339976
+```

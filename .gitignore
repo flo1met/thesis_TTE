@@ -4,3 +4,4 @@
 .Ruserdata
 .venv
 Simulation 1/datasets/
+.renvignore

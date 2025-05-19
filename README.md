@@ -15,5 +15,7 @@ The repository is publicly available on [GitHub](https://github.com/flo1met/thes
 - `README.md`: This file.
 - `LISCENSE.md`: License file.
 - `thesis_TTE.Rproj`: R project file for the thesis.
-- `requirements.txt`: PLACEHOLDER
+- `renv.lock`: R environment lock file to ensure reproducibility of the R code.
+- `Manifest.toml`: Julia environment lock file to ensure reproducibility of the Julia code.
+- `Project.toml`: Julia project file for the thesis.
 

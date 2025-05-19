@@ -2,8 +2,10 @@ library(tidyverse)
 library(ggplot2)
 library(patchwork)
 
+# Add sample sizes for x-label
 n_names <- c("200", "1e3", "5e3", "2e4", "5e4", "1e5")
 
+# read data
 julia_CI <- read.csv("02_appendix_F/out/performance_summary_julia.csv") %>%
   extract(
     col     = file,
@@ -66,7 +68,7 @@ r_noCI <- read.csv("02_appendix_F/out/performance_summary_noCI_r.csv") %>%
 
 noCI <- bind_rows(r_noCI, julia_noCI)
 
-
+# Plot and save
 p_time_noCI <- ggplot(noCI, aes(x = factor(n, levels = n_names), y = time_seconds, color = lang, group = lang)) +
   geom_line(size = 0.5) +
   geom_point() +

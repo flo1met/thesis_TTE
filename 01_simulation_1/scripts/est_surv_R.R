@@ -3,18 +3,18 @@
 library(arrow)
 library(TrialEmulation)
 library(furrr)
-#library(tictoc)
 
 # Define a log file for errors
 log_file <- "01_simulation_1/out/R/error_log.txt"
 
-#tic()
+# read all dataset names
 files <- data.frame(file = list.files("01_simulation_1/out/datasets/"))
 
 est <- function(file) {
   tryCatch({
     data <- read_feather(paste0("01_simulation_1/out/datasets/", file))
     
+    # Perform sequential TTE
     out_te <- initiators(data,
                          id = "ID",
                          period = "t",
@@ -48,4 +48,4 @@ set.seed(1337)
 future_pwalk(files, est,
              .options = furrr_options(seed = TRUE))
 plan(sequential)
-#toc()
+

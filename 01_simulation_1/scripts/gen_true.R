@@ -11,6 +11,7 @@ a_y = c(-4.7, -3.8, -3.0) # outcome event rate
 a_c = c(0.1, 0.5, 0.9) # confounding strength
 a_t = c(-1, 0, 1) # treatment prevalence
 
+# Grid with all scenarios to iterate over
 scenarios <- expand.grid(nvisits = nvisit, 
                          nsample = nsample, 
                          a_y = a_y, 
@@ -20,8 +21,9 @@ scenarios <- expand.grid(nvisits = nvisit,
 # Define log file
 log_file <- "01_simulation_1/out/true_values/error_log.txt"
 
+# Function to generate and save true values
 sim_save_fun <- function(nvisits, nsample, a_y, a_c, a_t) {
-  tryCatch({
+  tryCatch({ # tryCatch to catch possible errors and not interrupt the run
     data_1 <- DATA_GEN_censored_reduced(
       ns = nsample,
       nv = nvisits,
@@ -42,6 +44,7 @@ sim_save_fun <- function(nvisits, nsample, a_y, a_c, a_t) {
       all_control = TRUE
     )
     
+    # Estimate true values using Kaplan-Maier
     surv0 <- survfit(Surv(t, Y) ~ 1, data = data_0)
     surv1 <- survfit(Surv(t, Y) ~ 1, data = data_1)
     
@@ -53,6 +56,7 @@ sim_save_fun <- function(nvisits, nsample, a_y, a_c, a_t) {
       True_MRD = summary_surv1$surv - summary_surv0$surv
     )
     
+    # Save true values
     out_file <- paste0("01_simulation_1/out/true_values/true_", nsample, "_", a_y, "_", a_c, "_", a_t, ".arrow")
     write_feather(MRD, sink = out_file)
     

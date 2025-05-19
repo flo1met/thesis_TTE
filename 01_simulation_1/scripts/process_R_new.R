@@ -85,7 +85,7 @@ process_fun <- function(n, a_y, a_c, a_t) {
 
 
 library(furrr)
-# this does not stop automatically, problem with arrow? needs to be aborted by hand
+# this does not stop automatically, problem with arrow? needs to be aborted by hand sometimes
 t1 <- Sys.time()
 plan(multisession, workers = 8)
 

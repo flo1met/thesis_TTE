@@ -4,6 +4,9 @@ library(arrow)
 library(ggplot2)
 library(writexl)
 
+
+################## Read in results #######################################
+
 files <- data.frame(path = list.files("01_simulation_1/out/measures", full.names = TRUE)) %>%
   extract(
     col     = path,
@@ -14,29 +17,6 @@ files <- data.frame(path = list.files("01_simulation_1/out/measures", full.names
   ) %>%
   na.omit()
 
-#all_R <- files %>% filter(lang == "R") %>%
-#  pmap_dfr(function(path, lang, n, a_y, a_c, a_t) {
-#    read_feather(path) %>%
-#      mutate(
-#        lang = lang,
-#        n    = n,
-#        a_y  = a_y,
-#        a_c  = a_c,
-#        a_t  = a_t
-#      )
-#  })
-#
-#all_Julia <- files %>% filter(lang == "Julia") %>%
-#  pmap_dfr(function(path, lang, n, a_y, a_c, a_t) {
-#    read_feather(path) %>%
-#      mutate(
-#        lang = "Julia",
-#        n    = n,
-#        a_y  = a_y,
-#        a_c  = a_c,
-#        a_t  = a_t
-#      )
-#  })
 
 all_measures <- files %>% filter(lang == "R") %>%
   pmap_dfr(function(path, lang, n, a_y, a_c, a_t) {
@@ -77,6 +57,7 @@ scenarios <- expand.grid(
   a_t = a_t
 )
 
+# gather true values and add to results
 load_true <- function(n, a_y, a_c, a_t) {
   # Construct file path
   tv_path <- sprintf("01_simulation_1/out/true_values/true_%d_%g_%g_%g.arrow",
@@ -97,47 +78,9 @@ true_all <- pmap_dfr(scenarios, load_true)
 
 all_measures <- all_measures %>% left_join(true_all)
 
-#### read all sims
-#files <- data.frame(path = list.files("01_simulation_1/out/measures", full.names = TRUE)) %>%
-#  extract(
-#    col     = path,
-#    into    = c("lang", "n", "a_y", "a_c", "a_t"),
-#    regex   = "measures_([^_]+)_(\\d+)_(\\-?[0-9]+(?:\\.[0-9]+)?)_(\\-?[0-9]+(?:\\.[0-9]+)?)_(\\-?[0-9]+(?:\\.[0-9]+)?)\\.arrow$",
-#    convert = TRUE,
-#    remove  = FALSE
-#  ) %>%
-#  na.omit()
-#
-#
-#all_measures_full <- files %>% filter(lang == "R") %>%
-#  pmap_dfr(function(path, lang, n, a_y, a_c, a_t) {
-#    read_feather(path) %>%
-#      mutate(
-#        lang = lang,
-#        n    = n,
-#        a_y  = a_y,
-#        a_c  = a_c,
-#        a_t  = a_t
-#      )
-#  }) %>% select(-lang) %>%
-#  left_join(
-#    files %>% filter(lang == "Julia") %>%
-#      pmap_dfr(function(path, lang, n, a_y, a_c, a_t) {
-#        read_feather(path) %>% 
-#          mutate(
-#            lang = lang,
-#            n    = n,
-#            a_y  = a_y,
-#            a_c  = a_c,
-#            a_t  = a_t
-#          ) %>% select(-lang)
-#      }), by = c("followup_time", "n", "a_y", "a_c", "a_t")
-#  )
+################## Create Plots##############################
 
-#####
-
-
- 
+## save sample sizes to iterate over
 ns <- unique(all_measures$n)
 
 # red line: sandwich
@@ -424,69 +367,8 @@ for (n_value in ns) {
 
 
 
+######### Calculate percentage of best coverage ####################
 
-
-######## table
-
-summaries <- all_measures %>% group_by(n, a_c, a_t, a_y) %>%
-  summarise(coverage = mean(coverage),
-            coverage_emp = mean(coverage_emp),
-            coverage_pct = mean(coverage_pct),
-            width = mean(width),
-            width_emp = mean(width_emp),
-            width_pct = mean(width_pct),
-            type_I = mean(type_I),
-            type_I_emp = mean(type_I_emp),
-            type_I_pct = mean(type_I_pct),
-            power = mean(power),
-            power_emp = mean(power_emp),
-            power_pct = mean(power_pct),
-            
-            )
-
-summaries_MCE_fup <- all_measures %>% group_by(followup_time, n, a_c, a_t, a_y) %>%
-  summarise(MCE_coverage = mean(MCE_coverage),
-            MCE_coverage_emp = mean(MCE_coverage_emp),
-            MCE_coverage_pct = mean(MCE_coverage_pct),
-            MCE_bias_coverage = mean(MCE_bias_coverage),
-            MCE_bias_coverage_emp = mean(MCE_bias_coverage_emp),
-            MCE_bias_coverage_pct = mean(MCE_bias_coverage_pct),
-            MCE_bias = mean(MCE_bias_Julia),
-            MCE_MSE = mean(MCE_MSE_Julia),
-            MCE = mean(MCE_Julia)
-            #MCE_width_pct = mean(MCE_width_pct),
-            #MCE_power = mean(MCE_power),
-            #MCE_power_emp = mean(MCE_power_emp),
-            #MCE_power_pct = mean(MCE_power_pct),
-            
-  )
-
-summaries_MCE <- all_measures %>% group_by(n, a_c, a_t, a_y) %>%
-  summarise(MCE_coverage = mean(MCE_coverage),
-            MCE_coverage_emp = mean(MCE_coverage_emp),
-            MCE_coverage_pct = mean(MCE_coverage_pct),
-            MCE_bias_coverage = mean(MCE_bias_coverage),
-            MCE_bias_coverage_emp = mean(MCE_bias_coverage_emp),
-            MCE_bias_coverage_pct = mean(MCE_bias_coverage_pct),
-            MCE_bias = mean(MCE_bias_Julia),
-            MCE_MSE = mean(MCE_MSE_Julia),
-            MCE = mean(MCE_Julia)
-            #MCE_width_pct = mean(MCE_width_pct),
-            #MCE_power = mean(MCE_power),
-            #MCE_power_emp = mean(MCE_power_emp),
-            #MCE_power_pct = mean(MCE_power_pct),
-            
-  ) %>%
-  round(5)
-
-library(kableExtra)
-summaries_MCE %>%
-  kbl(format = "latex", booktabs = TRUE, longtable = TRUE, caption = "Summary of MCE Measures") %>%
-  kable_styling(latex_options = c("repeat_header"))
-
-
-
-######
 cov_diff <- all_measures %>%
   select(coverage, coverage_emp, coverage_pct) %>%
   mutate(coverage = abs(coverage - 0.95),
@@ -570,28 +452,10 @@ cov_emp_sw
 
 
 
-#all_measures_full <- files %>% filter(lang == "R") %>%
-#  pmap_dfr(function(path, lang, n, a_y, a_c, a_t) {
-#    read_feather(path) %>%
-#      mutate(
-#        lang = lang,
-#        n    = n,
-#        a_y  = a_y,
-#        a_c  = a_c,
-#        a_t  = a_t
-#      )
-#  })
-
-
-
-
-
-
-
 
 
 #### bias elim cov differences
-######
+
 cov_diff <- all_measures %>%
   select(bias_coverage, bias_coverage_emp, bias_coverage_pct) %>%
   mutate(bias_coverage = abs(bias_coverage - 0.95),
@@ -673,7 +537,7 @@ cov_emp_pct
 cov_sw_pct
 cov_emp_sw
 
-#save all measures as excel
+############################## save all measures as excel #################################
 
 write_xlsx(all_measures, path = "01_simulation_1/out/all_measures.xlsx")
 

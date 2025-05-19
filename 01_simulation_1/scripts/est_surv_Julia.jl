@@ -3,17 +3,17 @@
 using DataFrames
 using Arrow
 #using Pkg
-#Pkg.develop(path = "../TargetTrialEmulation.jl")
+#Pkg.add(PackageSpec(url="https://github.com/flo1met/TargetTrialEmulation.jl", rev="dev")) # install package from GitHub
 using TargetTrialEmulation
 using Random
 using Base.Threads
-#using ProgressMeter
 using Dates
 
 # Create log
 log_file = "01_simulation_1/out/Julia/error_log_20250410.txt"
 mkpath("01_simulation_1/out/Julia")
 
+# Helper function to remove wrong datatypes
 function drop_missing_union!(df::DataFrame)
     for col in names(df)
         # Check if the column type is Union{T, Missing}

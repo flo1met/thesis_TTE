@@ -15,25 +15,24 @@ scenarios <- expand.grid(
 )
 
 process_fun <- function(n, a_y, a_c, a_t) {
-  # 1) Find the “true” file
+  # load true values
   tv_path <- sprintf("01_simulation_1/out/true_values/true_%d_%g_%g_%g.arrow",
                      n, a_y, a_c, a_t)
   true_pe <- read_feather(tv_path)
   names(true_pe) <- c("followup_time", "True_MRD")
   
-  # 2) Gather all sim‐file paths for this scenario
+  # load sim data
   sim_paths <- list.files("01_simulation_1/out/Julia", full.names = TRUE) %>%
     keep(~ str_detect(.x,
                       sprintf("Julia_MRD_data_%d_%g_%g_%g_", n, a_y, a_c, a_t)))
   
-  # 3) Read & bind all sims into one tibble
   files_all <- map_dfr(sim_paths, read_feather)
   names <- names(files_all)
   names[1] <- "followup_time"
   names[4] <- "survival_diff"
   names(files_all) <- names
   
-  # 4) Join the truth, compute SD/CI/coverage measures
+  # calculate measures
   measures <- files_all %>%
     left_join(true_pe, by = "followup_time", suffix = c("", "_true")) %>%
     group_by(followup_time) %>%
@@ -102,7 +101,7 @@ process_fun <- function(n, a_y, a_c, a_t) {
 }
 
 library(furrr)
-# this does not stop automatically, problem with arrow? needs to be aborted by hand
+# this does not stop automatically, problem with arrow? needs to be aborted by hand sometimes
 t1 <- Sys.time()
 plan(multisession, workers = 8)
 

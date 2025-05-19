@@ -2,7 +2,7 @@
 
 library(TrialEmulation)
 library(tidyverse)
-source("01_simulation_1/scripts/simulate_MSM_simplified.R")
+source("01_simulation_1/scripts/simulate_MSM_simplified.R") # load DATA_GEN_censored_reduced()
 library(furrr)
 
 nsim = 1:1000# number of simulations
@@ -13,6 +13,7 @@ a_c = c(0.1, 0.5, 0.9) # confounding strength
 a_t = c(-1, 0, 1) # treatment prevalence
 
 
+# Grid with all scenarios to iterate over
 scenarios <- expand.grid(nsim = nsim, 
                          nvisits = nvisit, 
                          nsample = nsample, 
@@ -20,10 +21,8 @@ scenarios <- expand.grid(nsim = nsim,
                          a_c = a_c, 
                          a_t = a_t)
 
-slurm_id <- as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
 
-
-
+# Function to generate and save datasets
 sim_save_fun <- function(nsim = nsim, 
                          nvisits = nvisit, 
                          nsample = nsample, 
@@ -37,6 +36,7 @@ sim_save_fun <- function(nsim = nsim,
                             treat_prev = a_t, 
                             censor = TRUE)
   
+  # Save dataset
   arrow::write_feather(data, sink = paste0("01_simulation_1/out/datasets/data_", nsample, "_", a_y, "_", a_c, "_", a_t, "_",  nsim,".arrow"))
 }
 

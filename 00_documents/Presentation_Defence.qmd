@@ -1,0 +1,193 @@
+---
+title: "Improving Causal Inference from Observational Data"
+subtitle: "A Comparative Analysis of Confidence Interval Methods in Sequential Target Trial Emulation"
+date: "05/26/2025"
+date-format: "DD MMM YYYY"
+toc: false
+format: 
+  revealjs:
+    slide-number: true
+    logo: pres_files/UU_logo_2021_EN_RGB.png
+    footer: "Florian Metwaly"
+    css: pres_files/custom-style.css
+embed-resources: true
+---
+
+## Causal Inference
+
+-   **Randomized control trials** are the **gold standard** of causal inference
+-   But, not always feasible
+    -   Ethical limitations
+    -   Practical limitations
+
+→ More and more common to use **observational data**
+
+- Observational prone to biases
+
+
+::: notes
+-   Lets first talk about the Gold Standard in Causal Inference, RCTs
+-   example: smoking on lung cancer -\> unethical and would take decades
+-   especially in health sciences, use of large scale observational data, like EHR
+
+- Obs data has biases, or biases are easily introduced by design
+→ Led to the development of the **sequential Target Trial Emulation** framework
+:::
+
+
+## Sequential Target Trial Emulation
+
+- Copying of observations
+-   **Confidence Intervals** can't be estimated directly
+    -   One individual can be in multiple trials \
+      → Violates independence assumption
+- Literature recommends **non-parametric bootstrap**
+- In practice: **sandwich-type estimators**
+
+
+::: notes
+
+:::
+
+# {.text-center .mt-30 .mb-20}
+
+**How do non-parametric bootstrap confidence intervals compare to the sandwich-type confidence intervals?**
+
+
+
+## Methods
+
+- Simulation Study
+  - Sandwich-type estimator
+  - Non-parametric bootstrap
+    - Empirical bootstrap
+    - Percentile bootstrap
+  - 81 scenarios
+
+- Development of `TargetTrialEmulation.jl`
+  - A Julia package for computational efficient estimation of bootstrap confidence intervals
+
+::: notes
+- in practice: sandwich estimators
+- sandwich: analytic, but conservative
+- TTE itself is already computationally expensive, therefore in statistical software the analytic sandwich estimators are implemented. Bootstrap adds another layer of computational complexity.
+- 81 params over different sample sizes, outcome event rates, treatment prevalences
+:::
+
+## Results
+
+- **Bootstrap CIs** are **narrower** in some cases in small and medium sample sizes
+- Bootstrap **coverage** is **more often closest to 95%** 
+- **Performance degrades** at high event rates or large sample sizes
+
+::: {.columns}
+
+::: {.column width="50%"}
+| Method      | Closest to 95% |
+|-------------|----------------|
+| Sandwich    | 24.7%          |
+| Empirical   | 36.3%          |
+| Percentile  | 39.0%          |
+:::
+
+::: {.column width="50%"}
+<div class="small-text">
+**Table:** Proportion of simulation scenarios where the method's coverage was closest to the nominal 95% target.
+</div>
+:::
+
+:::
+
+## Results
+
+- **Point estimates are biased**, especially with:
+  - Small sample sizes
+  - High outcome event rates
+  - Later follow-up times
+
+- **Bootstrap distributions are skewed**
+  - Empirical bootstrap assumes symmetry
+  - Percentile more robust to skew, but **sensitive to bias**
+
+- **Undercoverage is mainly due to bias**
+
+## Conclusion & Future Outlook
+
+- Non-parametric bootstrap shows potential, but **more research** needed
+- Alternative: **Bias-corrected accelerated bootstrap**
+
+- Computational efficiency
+  - **ABC** interval
+
+
+## Sources
+
+::: {.small-text}
+
+Austin, P. C. (2016). *Variance estimation when using inverse probability of treatment weighting (IPTW) with survival analysis*. _Statistics in Medicine, 35_(30), 5642–5655. https://doi.org/10.1002/sim.7084  
+
+Fu, E. L. (2023). *Target trial emulation to improve causal inference from observational data: What, why, and how?* _Journal of the American Society of Nephrology, 34_(8), 1305. https://doi.org/10.1681/ASN.0000000000000152  
+
+Hernán, M. A., & Robins, J. M. (2020). *Causal inference: What if*.  
+
+Hernán, M. A. (2018). *How to estimate the effect of treatment duration on survival outcomes using observational data*. _BMJ, 360_, k182. https://doi.org/10.1136/bmj.k182  
+
+Su, L., Rezvani, R., Seaman, S. R., Starr, C., & Gravestock, I. (2024). *TrialEmulation: An R package to emulate target trials for causal analysis of observational time-to-event data*. _arXiv_. https://arxiv.org/abs/2401.12345
+
+:::
+
+## Coverage
+
+
+::: {.columns layout-ncol=3}
+
+::: {.column}
+![](../01_simulation_1/out/plots/plots_coverage200.png){width=100%}
+:::
+
+::: {.column}
+![](../01_simulation_1/out/plots/plots_coverage1000.png){width=100%}
+:::
+
+::: {.column}
+![](../01_simulation_1/out/plots/plots_coverage5000.png){width=100%}
+:::
+
+:::
+
+
+::: {.small-text}
+
+**Figure:** Coverage of 95% intervals results for sample sizes 200, 1000, and 5000. The <span class="text-green">green line</span> denotes the empirical bootstrap CI, the <span class="text-blue">blue line</span> denotes percentile bootstrap CI, and the <span class="text-red">red line</span> denotes the sandwich-type CI.
+
+:::
+
+::: notes
+maybe make one bigger?
+:::
+
+## Width
+
+::: {.columns layout-ncol=3}
+
+::: {.column}
+![](../01_simulation_1/out/plots/plots_width200.png){width=100%}
+:::
+
+::: {.column}
+![](../01_simulation_1/out/plots/plots_width1000.png){width=100%}
+:::
+
+::: {.column}
+![](../01_simulation_1/out/plots/plots_width5000.png){width=100%}
+:::
+
+:::
+
+::: {.small-text}
+
+**Figure:** Width of 95% intervals results for sample sizes 200, 1000, and 5000. The <span class="text-red">red line</span> denotes the bootstrap CIs, the <span class="text-blue">blue line</span> denotes the sandwich-type CIs.
+
+:::
+
+

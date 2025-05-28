@@ -3,3 +3,11 @@
   max-height: unset !important;
   position: absolute;
 }
+
+.small-text {
+  font-size: 0.6em;
+}
+
+.text-green { color: green; }
+.text-blue { color: blue; }
+.text-red { color: red; }
